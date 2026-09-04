@@ -1,7 +1,7 @@
 import Keycloak from 'keycloak-js';
 
 const keycloakConfig = {
-  url: 'http://localhost:8081',
+  url: window.location.origin + '/auth',
   realm: 'media-storage',
   clientId: 'media-storage-web',
 };
