@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: media_storage_postgres
+    environment:
+      POSTGRES_DB: media_storage_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "-c max_connections=200"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - media_network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.0
+    container_name: media_storage_keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    command:
+      - start-dev
+    networks:
+      - media_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  uploads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/uploads
+
+networks:
+  media_network:
+    driver: bridge
