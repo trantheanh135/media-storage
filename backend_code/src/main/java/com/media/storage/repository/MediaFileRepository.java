@@ -19,6 +19,10 @@ public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
 
     Page<MediaFile> findByGroupAndOriginalFilenameContainingIgnoreCase(Group group, String filename, Pageable pageable);
 
+    Page<MediaFile> findByMediaType(MediaType mediaType, Pageable pageable);
+
+    Page<MediaFile> findByOriginalFilenameContainingIgnoreCase(String filename, Pageable pageable);
+
     Optional<MediaFile> findByIdAndGroup(Long id, Group group);
 
     Optional<MediaFile> findByStoredFilename(String storedFilename);
