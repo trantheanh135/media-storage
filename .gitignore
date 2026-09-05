@@ -31,3 +31,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# TLS secrets - never commit private keys
+k8s/certs/
+k8s/09-tls-secret.yaml
