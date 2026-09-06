@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mediaAPI } from '../services/api';
+import { mediaAPI, adminAPI } from '../services/api';
 
 const MediaCard = ({ file, groupId, isAdmin, files, onDelete, onPreview }) => {
   const [loading, setLoading] = useState(false);
@@ -49,8 +49,6 @@ const MediaCard = ({ file, groupId, isAdmin, files, onDelete, onPreview }) => {
       }
     }
   };
-
-  const adminAPI = require('../services/api').adminAPI;
 
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
