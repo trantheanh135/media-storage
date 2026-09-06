@@ -126,7 +126,7 @@ const DashboardWithGroups = () => {
 
   const handleUploadSuccess = (newFile) => {
     setPage(0);
-    setFiles([newFile, ...files]);
+    setFiles((prev) => [newFile, ...prev]);
   };
 
   const handleDelete = (fileId) => {
