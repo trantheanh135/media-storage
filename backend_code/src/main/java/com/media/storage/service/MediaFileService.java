@@ -9,6 +9,8 @@ import com.media.storage.repository.MediaFileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -99,10 +101,10 @@ public class MediaFileService {
                 .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
     }
 
-    public byte[] downloadFile(Long id, Group group) throws IOException {
+    public Resource downloadFile(Long id, Group group) throws IOException {
         MediaFile mediaFile = mediaFileRepository.findByIdAndGroup(id, group)
                 .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
-        return Files.readAllBytes(Paths.get(mediaFile.getFilePath()));
+        return new UrlResource(Paths.get(mediaFile.getFilePath()).toUri());
     }
 
     public void deleteFile(Long id, Group group) throws IOException {

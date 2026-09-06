@@ -24,11 +24,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        String token = null;
+
         String header = request.getHeader("Authorization");
-
         if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
+            token = header.substring(7);
+        } else {
+            // <video>/<img> elements can't send an Authorization header, so
+            // streaming endpoints accept the token as a query param instead.
+            String queryToken = request.getParameter("token");
+            if (queryToken != null && !queryToken.isBlank()) {
+                token = queryToken;
+            }
+        }
 
+        if (token != null) {
             if (jwtTokenProvider.validateToken(token)) {
                 Claims claims = jwtTokenProvider.parseToken(token);
                 Long id = Long.valueOf(claims.getSubject());

@@ -8,9 +8,14 @@ import com.media.storage.model.User;
 import com.media.storage.service.GroupService;
 import com.media.storage.service.AuthenticatedUserService;
 import com.media.storage.service.MediaFileService;
+import com.media.storage.util.MediaStreamingUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/media")
@@ -183,7 +189,7 @@ public class MediaFileController {
             Group group = new Group();
             group.setId(groupId);
 
-            byte[] fileContent = mediaFileService.downloadFile(id, group);
+            Resource fileContent = mediaFileService.downloadFile(id, group);
             MediaFileDTO file = mediaFileService.getFileById(id, group);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -196,6 +202,31 @@ public class MediaFileController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{groupId}/file/{id}/stream")
+    public ResponseEntity<ResourceRegion> streamFile(
+            @PathVariable Long groupId,
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        try {
+            Long userId = getCurrentUserId();
+
+            if (!groupService.userHasAccessToGroup(userId, groupId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            Group group = new Group();
+            group.setId(groupId);
+
+            MediaFileDTO file = mediaFileService.getFileById(id, group);
+            List<HttpRange> ranges = HttpRange.parseRanges(request.getHeader(HttpHeaders.RANGE));
+            return MediaStreamingUtil.stream(file.getFilePath(), file.getFileType(), ranges);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 

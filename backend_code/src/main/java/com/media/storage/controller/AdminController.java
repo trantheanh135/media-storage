@@ -4,9 +4,14 @@ import com.media.storage.dto.MediaFileDTO;
 import com.media.storage.model.MediaType;
 import com.media.storage.service.AdminService;
 import com.media.storage.service.AuthenticatedUserService;
+import com.media.storage.util.MediaStreamingUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -101,7 +107,7 @@ public class AdminController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> downloadFile(@PathVariable Long id) {
         try {
-            byte[] fileContent = adminService.downloadFileAsAdmin(id);
+            Resource fileContent = adminService.downloadFileAsAdmin(id);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
                     .body(fileContent);
@@ -111,6 +117,19 @@ public class AdminController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/files/{id}/stream")
+    public ResponseEntity<ResourceRegion> streamFile(@PathVariable Long id, HttpServletRequest request) {
+        try {
+            MediaFileDTO file = adminService.getFileByIdAsAdmin(id);
+            List<HttpRange> ranges = HttpRange.parseRanges(request.getHeader(HttpHeaders.RANGE));
+            return MediaStreamingUtil.stream(file.getFilePath(), file.getFileType(), ranges);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
     }
 

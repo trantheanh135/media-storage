@@ -7,6 +7,16 @@ const api = axios.create({
   timeout: 300000,
 });
 
+// <video>/<img> elements can't send an Authorization header, so streaming
+// URLs carry the token as a query param instead.
+export const getStreamUrl = (fileId, groupId, isAdmin) => {
+  const token = localStorage.getItem('token');
+  const base = isAdmin
+    ? `${API_BASE_URL}/admin/files/${fileId}/stream`
+    : `${API_BASE_URL}/media/${groupId}/file/${fileId}/stream`;
+  return `${base}?token=${encodeURIComponent(token || '')}`;
+};
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');

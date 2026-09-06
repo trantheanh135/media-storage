@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mediaAPI, adminAPI } from '../services/api';
+import { mediaAPI, adminAPI, getStreamUrl } from '../services/api';
 
 const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
   const [loading, setLoading] = useState(false);
@@ -111,7 +111,7 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
       <div className="flex-1 flex items-center justify-center overflow-auto p-4">
         {isImage && (
           <img
-            src={file.filePath}
+            src={getStreamUrl(file.id, groupId, isAdmin)}
             alt={file.originalFilename}
             className="max-w-full max-h-full object-contain"
             onError={(e) => {
@@ -123,7 +123,7 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
         {isVideo && (
           <video
             ref={setVideoRef}
-            src={file.filePath}
+            src={getStreamUrl(file.id, groupId, isAdmin)}
             controls
             autoPlay
             className="max-w-full max-h-full object-contain bg-black"

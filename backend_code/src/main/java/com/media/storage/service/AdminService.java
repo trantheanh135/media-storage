@@ -6,6 +6,8 @@ import com.media.storage.repository.GroupRepository;
 import com.media.storage.repository.MediaFileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -57,20 +59,23 @@ public class AdminService {
                 .map(this::convertToDTO);
     }
 
-    public byte[] downloadFileAsAdmin(Long fileId) throws IOException {
+    public Resource downloadFileAsAdmin(Long fileId) throws IOException {
         if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can download any file");
         }
 
+        var mediaFile = mediaFileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+        return new UrlResource(Paths.get(mediaFile.getFilePath()).toUri());
+    }
+
+    public MediaFileDTO getFileByIdAsAdmin(Long fileId) {
+        if (!authenticatedUserService.isSuperAdmin()) {
+            throw new RuntimeException("Only super-admin can access this file");
+        }
+
         return mediaFileRepository.findById(fileId)
-                .map(mediaFile -> {
-                    try {
-                        return Files.readAllBytes(Paths.get(mediaFile.getFilePath()));
-                    } catch (IOException e) {
-                        log.error("Error reading file: {}", mediaFile.getId(), e);
-                        throw new RuntimeException("Error reading file", e);
-                    }
-                })
+                .map(this::convertToDTO)
                 .orElseThrow(() -> new RuntimeException("File not found"));
     }
 

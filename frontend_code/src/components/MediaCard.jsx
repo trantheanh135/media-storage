@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mediaAPI, adminAPI } from '../services/api';
+import { mediaAPI, adminAPI, getStreamUrl } from '../services/api';
 
 const MediaCard = ({ file, groupId, isAdmin, files, onDelete, onPreview }) => {
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,7 @@ const MediaCard = ({ file, groupId, isAdmin, files, onDelete, onPreview }) => {
       <div className="relative bg-gray-200 h-40 flex items-center justify-center overflow-hidden">
         {isImage && (
           <img
-            src={file.filePath}
+            src={getStreamUrl(file.id, groupId, isAdmin)}
             alt={file.originalFilename}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             onError={(e) => {
@@ -82,7 +82,8 @@ const MediaCard = ({ file, groupId, isAdmin, files, onDelete, onPreview }) => {
         {isVideo && (
           <div className="w-full h-full relative">
             <video
-              src={file.filePath}
+              src={getStreamUrl(file.id, groupId, isAdmin)}
+              preload="metadata"
               className="w-full h-full object-cover"
               controls={false}
             />
