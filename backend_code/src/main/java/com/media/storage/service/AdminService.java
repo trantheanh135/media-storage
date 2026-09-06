@@ -22,13 +22,13 @@ import java.nio.file.Paths;
 public class AdminService {
     private final MediaFileRepository mediaFileRepository;
     private final GroupRepository groupRepository;
-    private final KeycloakUserService keycloakUserService;
+    private final AuthenticatedUserService authenticatedUserService;
     private final MediaFileService mediaFileService;
 
     // ✅ Only super-admin can use these methods
 
     public Page<MediaFileDTO> getAllFilesAcrossGroups(int page, int size) {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
@@ -38,7 +38,7 @@ public class AdminService {
     }
 
     public Page<MediaFileDTO> getAllFilesOfType(MediaType mediaType, int page, int size) {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
@@ -48,7 +48,7 @@ public class AdminService {
     }
 
     public Page<MediaFileDTO> searchAllFiles(String filename, int page, int size) {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can search all files");
         }
 
@@ -58,7 +58,7 @@ public class AdminService {
     }
 
     public byte[] downloadFileAsAdmin(Long fileId) throws IOException {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can download any file");
         }
 
@@ -75,7 +75,7 @@ public class AdminService {
     }
 
     public void deleteFileAsAdmin(Long fileId) throws IOException {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can delete any file");
         }
 
@@ -91,14 +91,14 @@ public class AdminService {
     }
 
     public long getTotalFileCount() {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can view statistics");
         }
         return mediaFileRepository.count();
     }
 
     public long getTotalStorageUsed() {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can view statistics");
         }
         return mediaFileRepository.findAll()
@@ -108,7 +108,7 @@ public class AdminService {
     }
 
     public long getGroupCount() {
-        if (!keycloakUserService.isSuperAdmin()) {
+        if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can view statistics");
         }
         return groupRepository.count();

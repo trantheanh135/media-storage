@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { mediaAPI } from '../services/api';
+import { authAPI } from '../services/api';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -15,7 +15,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await mediaAPI.login({ username, password });
+      const response = await authAPI.login({ username, password });
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -24,7 +24,7 @@ const Login = () => {
         setError(response.data.message);
       }
     } catch (err) {
-      setError('Login failed: ' + err.message);
+      setError(err.response?.data?.error || 'Login failed');
     } finally {
       setLoading(false);
     }

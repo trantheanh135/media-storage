@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { mediaAPI } from '../services/api';
+import { authAPI } from '../services/api';
 
 const Register = () => {
   const [username, setUsername] = useState('');
@@ -23,7 +23,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await mediaAPI.register({
+      const response = await authAPI.register({
         username,
         email,
         password,
@@ -37,7 +37,7 @@ const Register = () => {
         setError(response.data.message);
       }
     } catch (err) {
-      setError('Registration failed: ' + err.message);
+      setError(err.response?.data?.error || 'Registration failed');
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { logout, getUserInfo } from '../services/keycloak';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Header = () => {
-  const userInfo = getUserInfo();
+  const navigate = useNavigate();
+  const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleLogout = () => {
-    logout();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
   };
 
   return (

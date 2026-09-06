@@ -49,17 +49,7 @@ timeout $TIMEOUT kubectl rollout status statefulset/postgres -n $NAMESPACE || {
 }
 echo -e "${GREEN}✓ PostgreSQL deployed${NC}\n"
 
-# Step 6: Deploy Keycloak
-echo -e "${YELLOW}🔑 Step 6: Deploying Keycloak...${NC}"
-kubectl apply -f 05-keycloak.yaml
-echo "Waiting for Keycloak to be ready (up to ${TIMEOUT}s)..."
-timeout $TIMEOUT kubectl rollout status deployment/keycloak -n $NAMESPACE || {
-  echo -e "${RED}✗ Keycloak deployment timeout${NC}"
-  exit 1
-}
-echo -e "${GREEN}✓ Keycloak deployed${NC}\n"
-
-# Step 7: Deploy Backend
+# Step 6: Deploy Backend
 echo -e "${YELLOW}🔌 Step 7: Deploying Backend...${NC}"
 # Update image in the deployment
 kubectl set image deployment/backend backend=$BACKEND_IMAGE -n $NAMESPACE --record 2>/dev/null || true
@@ -108,9 +98,7 @@ echo
 echo "Access points:"
 echo "  Frontend (NodePort): http://192.168.1.100:$(kubectl get svc frontend-service -n $NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')"
 echo "  Backend (Internal): http://backend-service:8080"
-echo "  Keycloak (NodePort): http://192.168.1.100:$(kubectl get svc keycloak-service -n $NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')"
 echo
 echo "Next steps:"
-echo "1. Access Keycloak and setup realm/clients/roles"
-echo "2. Update Keycloak client secret in backend"
-echo "3. Test application at frontend URL"
+echo "1. Run ./generate-jwt-secret.sh to create the JWT signing secret (required before backend can start)"
+echo "2. Register the first account at the frontend URL - it is automatically promoted to SUPER_ADMIN"

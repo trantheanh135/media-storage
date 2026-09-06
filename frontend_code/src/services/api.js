@@ -1,5 +1,4 @@
 import axios from 'axios';
-import keycloak from './keycloak';
 
 const API_BASE_URL = '/api';
 
@@ -10,7 +9,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = keycloak.token;
+    const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,29 +22,27 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
+  (error) => {
     if (error.response?.status === 401) {
-      try {
-        await keycloak.refreshToken(30);
-        const originalRequest = error.config;
-        originalRequest.headers.Authorization = `Bearer ${keycloak.token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        keycloak.logout();
-        return Promise.reject(refreshError);
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
 export const authAPI = {
-  getCurrentUser: () => {
-    return api.get('/auth/me');
+  login: (credentials) => {
+    return api.post('/auth/login', credentials);
   },
 
-  getUserInfo: () => {
-    return api.get('/auth/info');
+  register: (credentials) => {
+    return api.post('/auth/register', credentials);
+  },
+
+  getCurrentUser: () => {
+    return api.get('/auth/me');
   },
 };
 

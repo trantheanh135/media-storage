@@ -29,6 +29,10 @@ public class User {
     private String passwordHash;
 
     @Column(nullable = false)
+    @Builder.Default
+    private String role = "USER";
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)

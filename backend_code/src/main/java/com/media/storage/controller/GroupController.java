@@ -2,7 +2,7 @@ package com.media.storage.controller;
 
 import com.media.storage.dto.GroupDTO;
 import com.media.storage.service.GroupService;
-import com.media.storage.service.KeycloakUserService;
+import com.media.storage.service.AuthenticatedUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +18,11 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class GroupController {
     private final GroupService groupService;
-    private final KeycloakUserService keycloakUserService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     private Long getCurrentUserId() {
-        String userId = keycloakUserService.getCurrentUserId();
-        return userId != null ? Long.valueOf(userId.hashCode()) : null;
+        String userId = authenticatedUserService.getCurrentUserId();
+        return userId != null ? Long.valueOf(userId) : null;
     }
 
     @PostMapping

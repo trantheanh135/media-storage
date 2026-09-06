@@ -56,6 +56,13 @@ spec:
         - secretRef:
             name: media-storage-secret
 
+        env:
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: JWT_SECRET
+
         volumeMounts:
         - name: uploads
           mountPath: /home/uploads

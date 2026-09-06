@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import UploadZone from '../components/UploadZone';
 import MediaCard from '../components/MediaCard';
 import PreviewModal from '../components/PreviewModal';
-import { mediaAPI, groupAPI, authAPI } from '../services/api';
-import { getUserInfo } from '../services/keycloak';
+import { mediaAPI, groupAPI, adminAPI } from '../services/api';
 
 const DashboardWithGroups = () => {
   const navigate = useNavigate();
@@ -23,7 +22,7 @@ const DashboardWithGroups = () => {
   const [newGroupDesc, setNewGroupDesc] = useState('');
   const [previewFile, setPreviewFile] = useState(null);
 
-  const user = getUserInfo();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     loadGroups();
@@ -32,7 +31,7 @@ const DashboardWithGroups = () => {
 
   const checkSuperAdmin = async () => {
     try {
-      const response = await authAPI.getUserInfo();
+      const response = await adminAPI.getAdminInfo();
       setIsSuperAdmin(response.data.isSuperAdmin);
     } catch (error) {
       console.error('Error checking admin status:', error);

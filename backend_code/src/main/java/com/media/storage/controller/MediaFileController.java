@@ -6,7 +6,7 @@ import com.media.storage.model.Group;
 import com.media.storage.model.MediaType;
 import com.media.storage.model.User;
 import com.media.storage.service.GroupService;
-import com.media.storage.service.KeycloakUserService;
+import com.media.storage.service.AuthenticatedUserService;
 import com.media.storage.service.MediaFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -26,18 +26,18 @@ import java.io.IOException;
 public class MediaFileController {
     private final MediaFileService mediaFileService;
     private final GroupService groupService;
-    private final KeycloakUserService keycloakUserService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     private Long getCurrentUserId() {
-        String userId = keycloakUserService.getCurrentUserId();
-        return userId != null ? Long.valueOf(userId.hashCode()) : null;
+        String userId = authenticatedUserService.getCurrentUserId();
+        return userId != null ? Long.valueOf(userId) : null;
     }
 
     private User getCurrentUser() {
         User user = new User();
         user.setId(getCurrentUserId());
-        user.setUsername(keycloakUserService.getCurrentUsername());
-        user.setEmail(keycloakUserService.getCurrentUserEmail());
+        user.setUsername(authenticatedUserService.getCurrentUsername());
+        user.setEmail(authenticatedUserService.getCurrentUserEmail());
         return user;
     }
 

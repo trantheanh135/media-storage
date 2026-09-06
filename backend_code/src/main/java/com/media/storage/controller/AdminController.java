@@ -3,7 +3,7 @@ package com.media.storage.controller;
 import com.media.storage.dto.MediaFileDTO;
 import com.media.storage.model.MediaType;
 import com.media.storage.service.AdminService;
-import com.media.storage.service.KeycloakUserService;
+import com.media.storage.service.AuthenticatedUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +22,7 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class AdminController {
     private final AdminService adminService;
-    private final KeycloakUserService keycloakUserService;
+    private final AuthenticatedUserService authenticatedUserService;
 
     // ==================== Dashboard ====================
 
@@ -30,7 +30,7 @@ public class AdminController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getDashboard() {
         try {
-            if (!keycloakUserService.isSuperAdmin()) {
+            if (!authenticatedUserService.isSuperAdmin()) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("error", "Only super-admin can access dashboard"));
             }
@@ -40,8 +40,8 @@ public class AdminController {
             dashboard.put("totalStorage", adminService.getTotalStorageUsed());
             dashboard.put("totalStorageMB", adminService.getTotalStorageUsed() / (1024 * 1024));
             dashboard.put("totalGroups", adminService.getGroupCount());
-            dashboard.put("currentUser", keycloakUserService.getCurrentUsername());
-            dashboard.put("roles", keycloakUserService.getUserRoles());
+            dashboard.put("currentUser", authenticatedUserService.getCurrentUsername());
+            dashboard.put("roles", authenticatedUserService.getUserRoles());
 
             return ResponseEntity.ok(dashboard);
         } catch (Exception e) {
@@ -135,11 +135,11 @@ public class AdminController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getAdminInfo() {
         Map<String, Object> info = new HashMap<>();
-        info.put("username", keycloakUserService.getCurrentUsername());
-        info.put("email", keycloakUserService.getCurrentUserEmail());
-        info.put("roles", keycloakUserService.getUserRoles());
-        info.put("isSuperAdmin", keycloakUserService.isSuperAdmin());
-        info.put("isAdmin", keycloakUserService.isAdmin());
+        info.put("username", authenticatedUserService.getCurrentUsername());
+        info.put("email", authenticatedUserService.getCurrentUserEmail());
+        info.put("roles", authenticatedUserService.getUserRoles());
+        info.put("isSuperAdmin", authenticatedUserService.isSuperAdmin());
+        info.put("isAdmin", authenticatedUserService.isAdmin());
         return ResponseEntity.ok(info);
     }
 }
