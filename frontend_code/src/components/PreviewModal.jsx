@@ -92,16 +92,16 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
       {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-700 px-6 py-4 flex justify-between items-center">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-white truncate">{file.originalFilename}</h2>
-          <p className="text-gray-400 text-sm mt-1">
+      <div className="bg-gray-900 border-b border-gray-700 px-4 sm:px-6 py-4 flex justify-between items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold text-white truncate">{file.originalFilename}</h2>
+          <p className="text-gray-400 text-xs sm:text-sm mt-1 truncate">
             {file.mediaType} • {formatFileSize(file.fileSize)} • {formatDate(file.createdAt)}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white text-2xl font-bold transition-colors ml-4"
+          className="text-gray-400 hover:text-white text-2xl font-bold transition-colors shrink-0"
         >
           ✕
         </button>
@@ -168,43 +168,43 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
       )}
 
       {/* Footer */}
-      <div className="bg-gray-900 border-t border-gray-700 px-6 py-4 flex justify-between items-center">
+      <div className="bg-gray-900 border-t border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
         {/* Navigation */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center sm:justify-start">
           <button
             onClick={handlePrevious}
             disabled={currentIndex === 0}
-            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           >
-            ← Previous
+            ←
           </button>
-          <span className="text-gray-400 py-2">
+          <span className="text-gray-400 py-2 text-sm sm:text-base">
             {currentIndex + 1} / {files.length}
           </span>
           <button
             onClick={handleNext}
             disabled={currentIndex === files.length - 1}
-            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           >
-            Next →
+            →
           </button>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center sm:justify-end">
           <button
             onClick={handleDownload}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
           >
-            {loading ? '⬇️ Downloading...' : '⬇️ Download'}
+            {loading ? '⬇️ ...' : '⬇️ Download'}
           </button>
           <button
             onClick={handleDelete}
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            className="flex-1 sm:flex-none bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
           >
-            {loading ? '🗑️ Deleting...' : '🗑️ Delete'}
+            {loading ? '🗑️ ...' : '🗑️ Delete'}
           </button>
         </div>
       </div>

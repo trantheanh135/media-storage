@@ -200,28 +200,28 @@ const AdminDashboard = () => {
       {view === 'files' && (
         <div>
           {/* Search & Filters */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <form onSubmit={handleSearch} className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Search all files..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                   <button
                     type="submit"
-                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                    className="shrink-0 bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
                   >
-                    🔍 Search
+                    🔍
                   </button>
                   {searchActive && (
                     <button
                       type="button"
                       onClick={clearSearch}
-                      className="bg-gray-300 hover:bg-gray-400 text-gray-900 px-6 py-2 rounded-lg font-medium transition-colors"
+                      className="shrink-0 bg-gray-300 hover:bg-gray-400 text-gray-900 px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
                     >
                       Clear
                     </button>
@@ -229,7 +229,7 @@ const AdminDashboard = () => {
                 </form>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setFilterType('ALL')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
