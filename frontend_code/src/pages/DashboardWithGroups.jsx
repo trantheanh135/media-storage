@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import UploadZone from '../components/UploadZone';
 import MediaCard from '../components/MediaCard';
 import PreviewModal from '../components/PreviewModal';
+import BottomTabBar from '../components/BottomTabBar';
+import { SearchIcon, CloseIcon, PlusIcon, ChevronDownIcon, CloudIcon } from '../components/Icons';
 import { mediaAPI, groupAPI, adminAPI } from '../services/api';
 
 const DashboardWithGroups = () => {
-  const navigate = useNavigate();
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
@@ -17,15 +17,15 @@ const DashboardWithGroups = () => {
   const [filterType, setFilterType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
+  const [showGroupSwitcher, setShowGroupSwitcher] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDesc, setNewGroupDesc] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
 
   const loadingRef = useRef(false);
   const sentinelRef = useRef(null);
-
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     loadGroups();
@@ -78,7 +78,7 @@ const DashboardWithGroups = () => {
   }, [selectedGroup, filterType]);
 
   // Infinite scroll: load the next page once the sentinel below the grid
-  // becomes visible. The "Load More" button stays as a manual fallback.
+  // becomes visible.
   useEffect(() => {
     if (!hasMore) return undefined;
 
@@ -104,7 +104,7 @@ const DashboardWithGroups = () => {
       const response = await groupAPI.getGroups();
       setGroups(response.data);
       if (response.data.length > 0) {
-        setSelectedGroup(response.data[0].id);
+        setSelectedGroup((prev) => prev ?? response.data[0].id);
       }
     } catch (error) {
       console.error('Error loading groups:', error);
@@ -118,6 +118,7 @@ const DashboardWithGroups = () => {
       setNewGroupName('');
       setNewGroupDesc('');
       setShowCreateGroup(false);
+      setShowGroupSwitcher(false);
       loadGroups();
     } catch (error) {
       alert('Error creating group: ' + error.message);
@@ -130,7 +131,7 @@ const DashboardWithGroups = () => {
   };
 
   const handleDelete = (fileId) => {
-    setFiles(files.filter((f) => f.id !== fileId));
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
   const handleSearch = (e) => {
@@ -145,192 +146,227 @@ const DashboardWithGroups = () => {
     loadFiles(0, false, '', filterType);
   };
 
-  const handleLoadMore = () => {
-    loadFiles(page + 1, searchActive, searchQuery, filterType);
-  };
+  const currentGroup = groups.find((g) => g.id === selectedGroup);
+
+  const segments = [
+    { key: 'ALL', label: 'All' },
+    { key: 'IMAGE', label: 'Photos' },
+    { key: 'VIDEO', label: 'Videos' },
+  ];
 
   return (
     <div>
-      {/* Group Selector */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex gap-2 flex-wrap items-center justify-between">
-          <div className="flex gap-2 flex-wrap items-center">
+      {/* Large title + group switcher + upload action */}
+      <div className="px-4 pt-1 pb-3 relative">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1
+              style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.3px', color: '#000' }}
+              className="truncate"
+            >
+              Media Storage
+            </h1>
+            <button
+              onClick={() => setShowGroupSwitcher((v) => !v)}
+              style={{ color: '#007AFF' }}
+              className="flex items-center gap-1 text-[15px] font-medium mt-0.5"
+            >
+              <span className="truncate max-w-[220px]">{currentGroup?.name || 'Select a group'}</span>
+              <ChevronDownIcon size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+            </button>
+          </div>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            style={{ background: '#F2F2F7', color: '#007AFF' }}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
+          >
+            <PlusIcon size={18} />
+          </button>
+        </div>
+
+        {showGroupSwitcher && (
+          <div
+            style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '0.5px solid #E5E5EA' }}
+            className="absolute left-4 right-4 top-full mt-1 bg-white rounded-xl overflow-hidden z-20"
+          >
             {groups.map((group) => (
               <button
                 key={group.id}
-                onClick={() => setSelectedGroup(group.id)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  selectedGroup === group.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                }`}
+                onClick={() => {
+                  setSelectedGroup(group.id);
+                  setShowGroupSwitcher(false);
+                }}
+                style={{
+                  borderBottom: '0.5px solid #E5E5EA',
+                  color: group.id === selectedGroup ? '#007AFF' : '#000',
+                }}
+                className="w-full text-left px-4 py-3 text-[15px] font-medium"
               >
                 {group.name}
               </button>
             ))}
-            <button
-              onClick={() => setShowCreateGroup(!showCreateGroup)}
-              className="px-4 py-2 rounded-lg font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
-            >
-              ➕ New Group
-            </button>
-          </div>
-
-          {/* Admin Button */}
-          {isSuperAdmin && (
-            <button
-              onClick={() => navigate('/admin')}
-              className="px-4 py-2 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center gap-2"
-            >
-              🛡️ Admin Dashboard
-            </button>
-          )}
-        </div>
-
-        {showCreateGroup && (
-          <form onSubmit={handleCreateGroup} className="mt-4 space-y-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Group name"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
+            {!showCreateGroup ? (
               <button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                onClick={() => setShowCreateGroup(true)}
+                style={{ color: '#007AFF' }}
+                className="w-full text-left px-4 py-3 text-[15px] font-medium flex items-center gap-2"
               >
-                Create
+                <PlusIcon size={15} />
+                New Group
               </button>
-            </div>
-            <input
-              type="text"
-              placeholder="Description (optional)"
-              value={newGroupDesc}
-              onChange={(e) => setNewGroupDesc(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </form>
+            ) : (
+              <form onSubmit={handleCreateGroup} className="p-3 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Group name"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  style={{ background: '#F2F2F7' }}
+                  className="w-full px-3 py-2 rounded-lg text-[15px] outline-none"
+                  required
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={newGroupDesc}
+                  onChange={(e) => setNewGroupDesc(e.target.value)}
+                  style={{ background: '#F2F2F7' }}
+                  className="w-full px-3 py-2 rounded-lg text-[15px] outline-none"
+                />
+                <button
+                  type="submit"
+                  style={{ background: '#007AFF' }}
+                  className="w-full text-white py-2 rounded-lg text-[15px] font-semibold"
+                >
+                  Create
+                </button>
+              </form>
+            )}
+          </div>
         )}
       </div>
 
       {selectedGroup && (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <UploadZone groupId={selectedGroup} onUploadSuccess={handleUploadSuccess} />
-
-          {/* Search & Filters */}
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
-              <div className="flex-1 min-w-0">
-                <form onSubmit={handleSearch} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search files..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    type="submit"
-                    className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    🔍
+        <div>
+          {/* Search */}
+          <div className="px-4 pb-2.5">
+            <form onSubmit={handleSearch}>
+              <div style={{ background: '#F2F2F7' }} className="flex items-center gap-1.5 rounded-[10px] h-9 px-2.5">
+                <SearchIcon size={16} style={{ color: '#8E8E93', flexShrink: 0 }} />
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ color: '#000' }}
+                  className="flex-1 min-w-0 bg-transparent text-[15px] outline-none"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={clearSearch} style={{ color: '#8E8E93' }} className="flex-shrink-0">
+                    <CloseIcon size={16} />
                   </button>
-                  {searchActive && (
-                    <button
-                      type="button"
-                      onClick={clearSearch}
-                      className="shrink-0 bg-gray-300 hover:bg-gray-400 text-gray-900 px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </form>
+                )}
               </div>
+            </form>
+          </div>
 
-              <div className="flex gap-2 flex-wrap">
+          {/* Segmented control */}
+          <div className="px-4 pb-4">
+            <div style={{ background: '#E5E5EA' }} className="flex rounded-[9px] p-0.5 h-8">
+              {segments.map((seg) => (
                 <button
-                  onClick={() => setFilterType('ALL')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'ALL'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
+                  key={seg.key}
+                  onClick={() => setFilterType(seg.key)}
+                  style={
+                    filterType === seg.key
+                      ? { background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.12)', color: '#000', fontWeight: 600 }
+                      : { color: '#3C3C43', fontWeight: 500 }
+                  }
+                  className="flex-1 rounded-[7px] text-[13px]"
                 >
-                  All
+                  {seg.label}
                 </button>
-                <button
-                  onClick={() => setFilterType('IMAGE')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'IMAGE'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
-                >
-                  🖼️ Images
-                </button>
-                <button
-                  onClick={() => setFilterType('VIDEO')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'VIDEO'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
-                >
-                  🎬 Videos
-                </button>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Files Grid */}
+          {/* Grid */}
           {loading && page === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16">
               <div className="inline-flex items-center gap-2">
-                <div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-gray-600 font-medium">Loading...</span>
+                <div
+                  className="w-5 h-5 border-2 rounded-full animate-spin"
+                  style={{ borderColor: '#007AFF', borderTopColor: 'transparent' }}
+                ></div>
+                <span style={{ color: '#8E8E93' }} className="text-sm">Loading</span>
               </div>
             </div>
           ) : files.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg shadow-md">
-              <div className="text-5xl mb-4">📭</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No files found</h3>
-              <p className="text-gray-600">Upload your first file to get started!</p>
+            <div className="text-center py-16 px-6">
+              <div style={{ color: '#C7C7CC' }} className="flex justify-center mb-3">
+                <CloudIcon size={44} />
+              </div>
+              <h3 style={{ color: '#000' }} className="text-base font-semibold mb-1">No files yet</h3>
+              <p style={{ color: '#8E8E93' }} className="text-sm">Tap + to upload your first photo or video</p>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-3 gap-0.5">
                 {files.map((file) => (
                   <MediaCard
                     key={file.id}
                     file={file}
                     groupId={selectedGroup}
                     isAdmin={false}
-                    files={files}
-                    onDelete={handleDelete}
                     onPreview={setPreviewFile}
                   />
                 ))}
               </div>
 
-              {/* Sentinel for infinite scroll - loads the next page when scrolled into view */}
               <div ref={sentinelRef} className="h-1" />
 
-              {hasMore && (
-                <div className="text-center">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={loading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Loading...' : 'Load More'}
-                  </button>
+              {loading && page > 0 && (
+                <div className="text-center py-6">
+                  <div
+                    className="inline-block w-5 h-5 border-2 rounded-full animate-spin"
+                    style={{ borderColor: '#007AFF', borderTopColor: 'transparent' }}
+                  ></div>
                 </div>
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Upload sheet */}
+      {showUploadModal && (
+        <div
+          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowUploadModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[85vh] overflow-y-auto"
+          >
+            <div
+              style={{ borderBottom: '0.5px solid #E5E5EA' }}
+              className="flex items-center justify-between px-4 py-3"
+            >
+              <h2 className="text-base font-semibold">Upload</h2>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                style={{ color: '#007AFF' }}
+                className="text-[15px] font-medium"
+              >
+                Done
+              </button>
+            </div>
+            <div className="p-4">
+              <UploadZone groupId={selectedGroup} onUploadSuccess={handleUploadSuccess} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -345,6 +381,8 @@ const DashboardWithGroups = () => {
           onDelete={handleDelete}
         />
       )}
+
+      {isSuperAdmin && <BottomTabBar active="library" />}
     </div>
   );
 };

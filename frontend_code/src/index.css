@@ -12,3 +12,8 @@ html, body, #root {
   height: 100%;
   width: 100%;
 }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { adminAPI, mediaAPI } from '../services/api';
+import { adminAPI } from '../services/api';
 import MediaCard from '../components/MediaCard';
 import PreviewModal from '../components/PreviewModal';
+import BottomTabBar from '../components/BottomTabBar';
+import { SearchIcon, CloseIcon, ShieldIcon, CloudIcon } from '../components/Icons';
 
 const AdminDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
@@ -59,7 +61,7 @@ const AdminDashboard = () => {
   }, [view, filterType]);
 
   // Infinite scroll: load the next page once the sentinel below the grid
-  // becomes visible. The "Load More" button stays as a manual fallback.
+  // becomes visible.
   useEffect(() => {
     if (view !== 'files' || !hasMore) return undefined;
 
@@ -102,20 +104,25 @@ const AdminDashboard = () => {
     loadAllFiles(0, false, '', filterType);
   };
 
-  const handleLoadMore = () => {
-    loadAllFiles(page + 1, searchActive, searchQuery, filterType);
+  const handleDelete = (fileId) => {
+    setFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
-  const handleDelete = (fileId) => {
-    setFiles(files.filter((f) => f.id !== fileId));
-  };
+  const segments = [
+    { key: 'ALL', label: 'All' },
+    { key: 'IMAGE', label: 'Photos' },
+    { key: 'VIDEO', label: 'Videos' },
+  ];
 
   if (!dashboard) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-16">
         <div className="inline-flex items-center gap-2">
-          <div className="w-6 h-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-600 font-medium">Loading admin dashboard...</span>
+          <div
+            className="w-5 h-5 border-2 rounded-full animate-spin"
+            style={{ borderColor: '#007AFF', borderTopColor: 'transparent' }}
+          ></div>
+          <span style={{ color: '#8E8E93' }} className="text-sm">Loading admin dashboard</span>
         </div>
       </div>
     );
@@ -123,75 +130,58 @@ const AdminDashboard = () => {
 
   return (
     <div>
-      {/* Admin Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 mb-6 rounded-lg">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">🛡️ Super Admin Dashboard</h2>
-            <p className="text-red-100 mt-1">Full access to all files and groups</p>
-          </div>
-          <div className="text-right">
-            <p className="text-red-100">Logged in as: <span className="font-bold">{dashboard.currentUser}</span></p>
-            <p className="text-red-100 text-sm">Roles: {dashboard.roles.join(', ')}</p>
-          </div>
+      {/* Large title */}
+      <div className="px-4 pt-1 pb-3">
+        <div className="flex items-center gap-2">
+          <div style={{ color: '#FF3B30' }}><ShieldIcon size={26} /></div>
+          <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.3px', color: '#000' }}>Admin</h1>
+        </div>
+        <p style={{ color: '#8E8E93' }} className="text-[15px] mt-0.5">
+          {dashboard.currentUser} &middot; {dashboard.roles.join(', ')}
+        </p>
+      </div>
+
+      {/* Tab Navigation (segmented) */}
+      <div className="px-4 pb-4">
+        <div style={{ background: '#E5E5EA' }} className="flex rounded-[9px] p-0.5 h-8">
+          {[
+            { key: 'dashboard', label: 'Overview' },
+            { key: 'files', label: 'All Files' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setView(tab.key)}
+              style={
+                view === tab.key
+                  ? { background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.12)', color: '#000', fontWeight: 600 }
+                  : { color: '#3C3C43', fontWeight: 500 }
+              }
+              className="flex-1 rounded-[7px] text-[13px]"
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setView('dashboard')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            view === 'dashboard'
-              ? 'bg-red-600 text-white'
-              : 'bg-white text-gray-900 border border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          📊 Dashboard
-        </button>
-        <button
-          onClick={() => setView('files')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            view === 'files'
-              ? 'bg-red-600 text-white'
-              : 'bg-white text-gray-900 border border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          📁 All Files
-        </button>
-      </div>
-
-      {/* Dashboard View */}
+      {/* Overview */}
       {view === 'dashboard' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Total Files Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-4xl mb-2">📁</div>
-            <p className="text-gray-600 text-sm">Total Files</p>
-            <p className="text-3xl font-bold text-gray-900">{dashboard.totalFiles}</p>
+        <div className="px-4 grid grid-cols-2 gap-3">
+          <div style={{ background: '#F2F2F7' }} className="rounded-2xl p-4">
+            <p style={{ color: '#8E8E93' }} className="text-xs font-medium mb-1">Total Files</p>
+            <p style={{ color: '#000' }} className="text-2xl font-bold">{dashboard.totalFiles}</p>
           </div>
-
-          {/* Storage Used Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-4xl mb-2">💾</div>
-            <p className="text-gray-600 text-sm">Storage Used</p>
-            <p className="text-3xl font-bold text-gray-900">
-              {(dashboard.totalStorageMB / 1024).toFixed(2)} GB
-            </p>
+          <div style={{ background: '#F2F2F7' }} className="rounded-2xl p-4">
+            <p style={{ color: '#8E8E93' }} className="text-xs font-medium mb-1">Storage Used</p>
+            <p style={{ color: '#000' }} className="text-2xl font-bold">{(dashboard.totalStorageMB / 1024).toFixed(2)} GB</p>
           </div>
-
-          {/* Total Groups Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-4xl mb-2">👥</div>
-            <p className="text-gray-600 text-sm">Total Groups</p>
-            <p className="text-3xl font-bold text-gray-900">{dashboard.totalGroups}</p>
+          <div style={{ background: '#F2F2F7' }} className="rounded-2xl p-4">
+            <p style={{ color: '#8E8E93' }} className="text-xs font-medium mb-1">Total Groups</p>
+            <p style={{ color: '#000' }} className="text-2xl font-bold">{dashboard.totalGroups}</p>
           </div>
-
-          {/* Admin Status Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-4xl mb-2">🛡️</div>
-            <p className="text-gray-600 text-sm">Access Level</p>
-            <p className="text-xl font-bold text-red-600">Super Admin</p>
+          <div style={{ background: '#FFEBEA' }} className="rounded-2xl p-4">
+            <p style={{ color: '#FF3B30' }} className="text-xs font-medium mb-1">Access Level</p>
+            <p style={{ color: '#FF3B30' }} className="text-lg font-bold">Super Admin</p>
           </div>
         </div>
       )}
@@ -199,113 +189,89 @@ const AdminDashboard = () => {
       {/* Files View */}
       {view === 'files' && (
         <div>
-          {/* Search & Filters */}
-          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-6">
-              <div className="flex-1 min-w-0">
-                <form onSubmit={handleSearch} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search all files..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <button
-                    type="submit"
-                    className="shrink-0 bg-red-600 hover:bg-red-700 text-white px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
-                  >
-                    🔍
+          {/* Search */}
+          <div className="px-4 pb-2.5">
+            <form onSubmit={handleSearch}>
+              <div style={{ background: '#F2F2F7' }} className="flex items-center gap-1.5 rounded-[10px] h-9 px-2.5">
+                <SearchIcon size={16} style={{ color: '#8E8E93', flexShrink: 0 }} />
+                <input
+                  type="text"
+                  placeholder="Search all files"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ color: '#000' }}
+                  className="flex-1 min-w-0 bg-transparent text-[15px] outline-none"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={clearSearch} style={{ color: '#8E8E93' }} className="flex-shrink-0">
+                    <CloseIcon size={16} />
                   </button>
-                  {searchActive && (
-                    <button
-                      type="button"
-                      onClick={clearSearch}
-                      className="shrink-0 bg-gray-300 hover:bg-gray-400 text-gray-900 px-4 sm:px-6 py-2 rounded-lg font-medium transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </form>
+                )}
               </div>
+            </form>
+          </div>
 
-              <div className="flex gap-2 flex-wrap">
+          {/* Filter segmented control */}
+          <div className="px-4 pb-4">
+            <div style={{ background: '#E5E5EA' }} className="flex rounded-[9px] p-0.5 h-8">
+              {segments.map((seg) => (
                 <button
-                  onClick={() => setFilterType('ALL')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'ALL'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
+                  key={seg.key}
+                  onClick={() => setFilterType(seg.key)}
+                  style={
+                    filterType === seg.key
+                      ? { background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.12)', color: '#000', fontWeight: 600 }
+                      : { color: '#3C3C43', fontWeight: 500 }
+                  }
+                  className="flex-1 rounded-[7px] text-[13px]"
                 >
-                  All
+                  {seg.label}
                 </button>
-                <button
-                  onClick={() => setFilterType('IMAGE')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'IMAGE'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
-                >
-                  🖼️ Images
-                </button>
-                <button
-                  onClick={() => setFilterType('VIDEO')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterType === 'VIDEO'
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
-                  }`}
-                >
-                  🎬 Videos
-                </button>
-              </div>
+              ))}
             </div>
           </div>
 
           {/* Files Grid */}
           {loading && page === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-16">
               <div className="inline-flex items-center gap-2">
-                <div className="w-6 h-6 border-3 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-gray-600 font-medium">Loading files...</span>
+                <div
+                  className="w-5 h-5 border-2 rounded-full animate-spin"
+                  style={{ borderColor: '#FF3B30', borderTopColor: 'transparent' }}
+                ></div>
+                <span style={{ color: '#8E8E93' }} className="text-sm">Loading</span>
               </div>
             </div>
           ) : files.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-lg shadow-md">
-              <div className="text-5xl mb-4">📭</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No files found</h3>
-              <p className="text-gray-600">No files in the system yet</p>
+            <div className="text-center py-16 px-6">
+              <div style={{ color: '#C7C7CC' }} className="flex justify-center mb-3">
+                <CloudIcon size={44} />
+              </div>
+              <h3 style={{ color: '#000' }} className="text-base font-semibold mb-1">No files found</h3>
+              <p style={{ color: '#8E8E93' }} className="text-sm">Nothing in the system yet</p>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-3 gap-0.5">
                 {files.map((file) => (
                   <MediaCard
                     key={file.id}
                     file={file}
                     groupId={1}
                     isAdmin={true}
-                    files={files}
-                    onDelete={handleDelete}
                     onPreview={setPreviewFile}
                   />
                 ))}
               </div>
 
-              {/* Sentinel for infinite scroll - loads the next page when scrolled into view */}
               <div ref={sentinelRef} className="h-1" />
 
-              {hasMore && (
-                <div className="text-center">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={loading}
-                    className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Loading...' : 'Load More'}
-                  </button>
+              {loading && page > 0 && (
+                <div className="text-center py-6">
+                  <div
+                    className="inline-block w-5 h-5 border-2 rounded-full animate-spin"
+                    style={{ borderColor: '#FF3B30', borderTopColor: 'transparent' }}
+                  ></div>
                 </div>
               )}
             </>
@@ -324,6 +290,8 @@ const AdminDashboard = () => {
           onDelete={handleDelete}
         />
       )}
+
+      <BottomTabBar active="admin" />
     </div>
   );
 };

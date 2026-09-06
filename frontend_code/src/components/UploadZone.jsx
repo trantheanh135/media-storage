@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { mediaAPI } from '../services/api';
+import { CloudIcon } from './Icons';
 
 const UploadZone = ({ groupId, onUploadSuccess }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -71,23 +72,23 @@ const UploadZone = ({ groupId, onUploadSuccess }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 mb-8">
+    <div>
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={handleClick}
-        className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-          isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
-        }`}
+        style={{ borderColor: isDragging ? '#007AFF' : '#D1D1D6', background: isDragging ? '#F0F7FF' : 'transparent' }}
+        className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors"
       >
-        <div className="text-5xl mb-4">☁️</div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Drag and drop your files here
+        <div style={{ color: '#8E8E93' }} className="flex justify-center mb-3">
+          <CloudIcon size={36} />
+        </div>
+        <h2 style={{ color: '#000' }} className="text-base font-semibold mb-1">
+          Drag and drop, or tap to browse
         </h2>
-        <p className="text-gray-600 mb-4">or click to browse (select multiple, or an entire folder's contents)</p>
-        <p className="text-sm text-gray-500">Supported formats: Images (JPG, PNG, GIF) & Videos (MP4, WebM, OGV)</p>
-        <p className="text-sm text-gray-500">Maximum file size: 500MB per file</p>
+        <p style={{ color: '#8E8E93' }} className="text-sm mb-3">Select multiple files, or an entire folder's contents</p>
+        <p style={{ color: '#AEAEB2' }} className="text-xs">Images &amp; videos, up to 500MB each</p>
       </div>
 
       <input
@@ -99,16 +100,17 @@ const UploadZone = ({ groupId, onUploadSuccess }) => {
         style={{ display: 'none' }}
       />
 
-      <div className="mt-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="mt-4">
+        <label style={{ color: '#3C3C43' }} className="block text-sm font-medium mb-1.5">
           Description (optional)
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Add a description for this file..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          rows="3"
+          placeholder="Add a description..."
+          style={{ background: '#F2F2F7' }}
+          className="w-full px-3 py-2 rounded-lg text-[15px] outline-none"
+          rows="2"
           disabled={uploading}
         />
       </div>
@@ -116,8 +118,8 @@ const UploadZone = ({ groupId, onUploadSuccess }) => {
       {uploading && (
         <div className="mt-4 text-center">
           <div className="inline-flex items-center gap-2">
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-600">
+            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: '#007AFF', borderTopColor: 'transparent' }}></div>
+            <span style={{ color: '#8E8E93' }} className="text-sm">
               {uploadProgress
                 ? `Uploading ${uploadProgress.current} of ${uploadProgress.total}...`
                 : 'Uploading...'}
