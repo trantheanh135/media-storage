@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { adminAPI, mediaAPI } from '../services/api';
 import MediaCard from '../components/MediaCard';
 import PreviewModal from '../components/PreviewModal';
@@ -15,15 +15,70 @@ const AdminDashboard = () => {
   const [view, setView] = useState('dashboard'); // dashboard or files
   const [previewFile, setPreviewFile] = useState(null);
 
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef(null);
+
   useEffect(() => {
     loadDashboard();
   }, []);
 
+  // pageToLoad/isSearch/query/type are passed explicitly (not read from
+  // component state) so callers never race against React's async state
+  // updates - e.g. calling this right after setSearchActive(true) would
+  // otherwise still see the old searchActive value.
+  const loadAllFiles = async (pageToLoad, isSearch, query, type) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      let response;
+      if (isSearch && query) {
+        response = await adminAPI.searchAllFiles(query, pageToLoad, 12);
+      } else if (type !== 'ALL') {
+        response = await adminAPI.getFilesByType(type, pageToLoad, 12);
+      } else {
+        response = await adminAPI.getAllFiles(pageToLoad, 12);
+      }
+
+      setFiles((prev) => (pageToLoad === 0 ? response.data.content : [...prev, ...response.data.content]));
+      setHasMore(!response.data.last);
+      setPage(pageToLoad);
+    } catch (error) {
+      console.error('Error loading files:', error);
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  };
+
   useEffect(() => {
     if (view === 'files') {
-      loadAllFiles();
+      loadAllFiles(0, searchActive, searchQuery, filterType);
     }
-  }, [view, page, filterType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, filterType]);
+
+  // Infinite scroll: load the next page once the sentinel below the grid
+  // becomes visible. The "Load More" button stays as a manual fallback.
+  useEffect(() => {
+    if (view !== 'files' || !hasMore) return undefined;
+
+    const node = sentinelRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          loadAllFiles(page + 1, searchActive, searchQuery, filterType);
+        }
+      },
+      { rootMargin: '600px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, page, hasMore, files.length]);
 
   const loadDashboard = async () => {
     try {
@@ -35,42 +90,20 @@ const AdminDashboard = () => {
     }
   };
 
-  const loadAllFiles = async () => {
-    setLoading(true);
-    try {
-      let response;
-      if (searchActive && searchQuery) {
-        response = await adminAPI.searchAllFiles(searchQuery, page, 12);
-      } else if (filterType !== 'ALL') {
-        response = await adminAPI.getFilesByType(filterType, page, 12);
-      } else {
-        response = await adminAPI.getAllFiles(page, 12);
-      }
-
-      if (page === 0) {
-        setFiles(response.data.content);
-      } else {
-        setFiles([...files, ...response.data.content]);
-      }
-      setHasMore(!response.data.last);
-    } catch (error) {
-      console.error('Error loading files:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearch = (e) => {
     e.preventDefault();
-    setPage(0);
     setSearchActive(true);
-    loadAllFiles();
+    loadAllFiles(0, true, searchQuery, filterType);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSearchActive(false);
-    setPage(0);
+    loadAllFiles(0, false, '', filterType);
+  };
+
+  const handleLoadMore = () => {
+    loadAllFiles(page + 1, searchActive, searchQuery, filterType);
   };
 
   const handleDelete = (fileId) => {
@@ -117,7 +150,7 @@ const AdminDashboard = () => {
           📊 Dashboard
         </button>
         <button
-          onClick={() => { setView('files'); setPage(0); }}
+          onClick={() => setView('files')}
           className={`px-6 py-3 rounded-lg font-medium transition-colors ${
             view === 'files'
               ? 'bg-red-600 text-white'
@@ -198,7 +231,7 @@ const AdminDashboard = () => {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setFilterType('ALL'); setPage(0); }}
+                  onClick={() => setFilterType('ALL')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'ALL'
                       ? 'bg-red-600 text-white'
@@ -208,7 +241,7 @@ const AdminDashboard = () => {
                   All
                 </button>
                 <button
-                  onClick={() => { setFilterType('IMAGE'); setPage(0); }}
+                  onClick={() => setFilterType('IMAGE')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'IMAGE'
                       ? 'bg-red-600 text-white'
@@ -218,7 +251,7 @@ const AdminDashboard = () => {
                   🖼️ Images
                 </button>
                 <button
-                  onClick={() => { setFilterType('VIDEO'); setPage(0); }}
+                  onClick={() => setFilterType('VIDEO')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'VIDEO'
                       ? 'bg-red-600 text-white'
@@ -261,10 +294,13 @@ const AdminDashboard = () => {
                 ))}
               </div>
 
+              {/* Sentinel for infinite scroll - loads the next page when scrolled into view */}
+              <div ref={sentinelRef} className="h-1" />
+
               {hasMore && (
                 <div className="text-center">
                   <button
-                    onClick={() => setPage(page + 1)}
+                    onClick={handleLoadMore}
                     disabled={loading}
                     className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >

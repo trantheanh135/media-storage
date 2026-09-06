@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import UploadZone from '../components/UploadZone';
 import MediaCard from '../components/MediaCard';
@@ -22,6 +22,9 @@ const DashboardWithGroups = () => {
   const [newGroupDesc, setNewGroupDesc] = useState('');
   const [previewFile, setPreviewFile] = useState(null);
 
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef(null);
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
@@ -38,12 +41,63 @@ const DashboardWithGroups = () => {
     }
   };
 
+  // pageToLoad/isSearch/query/type are passed explicitly (not read from
+  // component state) so callers never race against React's async state
+  // updates - e.g. calling this right after setSearchActive(true) would
+  // otherwise still see the old searchActive value.
+  const loadFiles = async (pageToLoad, isSearch, query, type) => {
+    if (!selectedGroup || loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      let response;
+      if (isSearch && query) {
+        response = await mediaAPI.searchGroupFiles(selectedGroup, query, pageToLoad, 12);
+      } else if (type !== 'ALL') {
+        response = await mediaAPI.getGroupFilesByType(selectedGroup, type, pageToLoad, 12);
+      } else {
+        response = await mediaAPI.getGroupFiles(selectedGroup, pageToLoad, 12);
+      }
+
+      setFiles((prev) => (pageToLoad === 0 ? response.data.content : [...prev, ...response.data.content]));
+      setHasMore(!response.data.last);
+      setPage(pageToLoad);
+    } catch (error) {
+      console.error('Error loading files:', error);
+    } finally {
+      setLoading(false);
+      loadingRef.current = false;
+    }
+  };
+
   useEffect(() => {
     if (selectedGroup) {
-      setPage(0);
-      loadFiles();
+      loadFiles(0, searchActive, searchQuery, filterType);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup, filterType]);
+
+  // Infinite scroll: load the next page once the sentinel below the grid
+  // becomes visible. The "Load More" button stays as a manual fallback.
+  useEffect(() => {
+    if (!hasMore) return undefined;
+
+    const node = sentinelRef.current;
+    if (!node) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          loadFiles(page + 1, searchActive, searchQuery, filterType);
+        }
+      },
+      { rootMargin: '600px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, hasMore, files.length]);
 
   const loadGroups = async () => {
     try {
@@ -54,33 +108,6 @@ const DashboardWithGroups = () => {
       }
     } catch (error) {
       console.error('Error loading groups:', error);
-    }
-  };
-
-  const loadFiles = async () => {
-    if (!selectedGroup) return;
-
-    setLoading(true);
-    try {
-      let response;
-      if (searchActive && searchQuery) {
-        response = await mediaAPI.searchGroupFiles(selectedGroup, searchQuery, page, 12);
-      } else if (filterType !== 'ALL') {
-        response = await mediaAPI.getGroupFilesByType(selectedGroup, filterType, page, 12);
-      } else {
-        response = await mediaAPI.getGroupFiles(selectedGroup, page, 12);
-      }
-
-      if (page === 0) {
-        setFiles(response.data.content);
-      } else {
-        setFiles([...files, ...response.data.content]);
-      }
-      setHasMore(!response.data.last);
-    } catch (error) {
-      console.error('Error loading files:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -108,15 +135,18 @@ const DashboardWithGroups = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setPage(0);
     setSearchActive(true);
-    loadFiles();
+    loadFiles(0, true, searchQuery, filterType);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSearchActive(false);
-    setPage(0);
+    loadFiles(0, false, '', filterType);
+  };
+
+  const handleLoadMore = () => {
+    loadFiles(page + 1, searchActive, searchQuery, filterType);
   };
 
   return (
@@ -222,7 +252,7 @@ const DashboardWithGroups = () => {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setFilterType('ALL'); setPage(0); }}
+                  onClick={() => setFilterType('ALL')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'ALL'
                       ? 'bg-blue-600 text-white'
@@ -232,7 +262,7 @@ const DashboardWithGroups = () => {
                   All
                 </button>
                 <button
-                  onClick={() => { setFilterType('IMAGE'); setPage(0); }}
+                  onClick={() => setFilterType('IMAGE')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'IMAGE'
                       ? 'bg-blue-600 text-white'
@@ -242,7 +272,7 @@ const DashboardWithGroups = () => {
                   🖼️ Images
                 </button>
                 <button
-                  onClick={() => { setFilterType('VIDEO'); setPage(0); }}
+                  onClick={() => setFilterType('VIDEO')}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     filterType === 'VIDEO'
                       ? 'bg-blue-600 text-white'
@@ -285,10 +315,13 @@ const DashboardWithGroups = () => {
                 ))}
               </div>
 
+              {/* Sentinel for infinite scroll - loads the next page when scrolled into view */}
+              <div ref={sentinelRef} className="h-1" />
+
               {hasMore && (
                 <div className="text-center">
                   <button
-                    onClick={() => setPage(page + 1)}
+                    onClick={handleLoadMore}
                     disabled={loading}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
