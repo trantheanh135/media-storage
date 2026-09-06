@@ -65,6 +65,10 @@ export const groupAPI = {
     return api.post('/groups', { name, description });
   },
 
+  updateGroup: (groupId, name, description) => {
+    return api.put(`/groups/${groupId}`, { name, description });
+  },
+
   getGroupById: (groupId) => {
     return api.get(`/groups/${groupId}`);
   },

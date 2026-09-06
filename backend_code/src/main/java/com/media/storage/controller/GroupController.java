@@ -62,6 +62,24 @@ public class GroupController {
         }
     }
 
+    @PutMapping("/{groupId}")
+    public ResponseEntity<?> updateGroup(@PathVariable Long groupId, @RequestBody Map<String, String> request) {
+        try {
+            Long currentUserId = getCurrentUserId();
+            boolean isSuperAdmin = authenticatedUserService.isSuperAdmin();
+            GroupDTO group = groupService.updateGroup(
+                    groupId,
+                    request.get("name"),
+                    request.get("description"),
+                    currentUserId,
+                    isSuperAdmin
+            );
+            return ResponseEntity.ok(group);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{groupId}/members/{userId}")
     public ResponseEntity<?> addMember(@PathVariable Long groupId, @PathVariable Long userId) {
         try {

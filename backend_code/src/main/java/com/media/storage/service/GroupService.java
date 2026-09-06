@@ -104,6 +104,27 @@ public class GroupService {
     }
 
     @Transactional
+    public GroupDTO updateGroup(Long groupId, String name, String description, Long currentUserId, boolean isSuperAdmin) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+
+        if (!group.getOwner().getId().equals(currentUserId) && !isSuperAdmin) {
+            throw new RuntimeException("Only the group owner or a super-admin can update this group");
+        }
+
+        if (name != null && !name.isBlank()) {
+            group.setName(name);
+        }
+        if (description != null) {
+            group.setDescription(description);
+        }
+
+        group = groupRepository.save(group);
+        log.info("Group updated: {}", group.getName());
+        return convertToDTO(group);
+    }
+
+    @Transactional
     public void deleteGroup(Long groupId, Long currentUserId) {
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new RuntimeException("Group not found"));
