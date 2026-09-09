@@ -22,4 +22,5 @@ public class MediaFileDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String description;
+    private Boolean favorite;
 }

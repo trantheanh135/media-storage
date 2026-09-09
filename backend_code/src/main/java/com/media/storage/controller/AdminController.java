@@ -133,6 +133,17 @@ public class AdminController {
         }
     }
 
+    @PatchMapping("/files/{id}/favorite")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> toggleFavorite(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(adminService.toggleFavoriteAsAdmin(id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/files/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> deleteFile(@PathVariable Long id) {

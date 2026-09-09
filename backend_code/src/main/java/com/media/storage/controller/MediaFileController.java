@@ -230,6 +230,25 @@ public class MediaFileController {
         }
     }
 
+    @PatchMapping("/{groupId}/file/{id}/favorite")
+    public ResponseEntity<?> toggleFavorite(@PathVariable Long groupId, @PathVariable Long id) {
+        try {
+            Long userId = getCurrentUserId();
+
+            if (!groupService.userHasAccessToGroup(userId, groupId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You don't have access to this group");
+            }
+
+            Group group = new Group();
+            group.setId(groupId);
+
+            return ResponseEntity.ok(mediaFileService.toggleFavorite(id, group));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{groupId}/file/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable Long groupId, @PathVariable Long id) {
         try {

@@ -126,6 +126,10 @@ export const mediaAPI = {
   deleteFile: (groupId, id) => {
     return api.delete(`/media/${groupId}/file/${id}`);
   },
+
+  toggleFavorite: (groupId, id) => {
+    return api.patch(`/media/${groupId}/file/${id}/favorite`);
+  },
 };
 
 export const adminAPI = {
@@ -157,6 +161,10 @@ export const adminAPI = {
 
   getAdminInfo: () => {
     return api.get('/admin/info');
+  },
+
+  toggleFavorite: (fileId) => {
+    return api.patch(`/admin/files/${fileId}/favorite`);
   },
 };
 

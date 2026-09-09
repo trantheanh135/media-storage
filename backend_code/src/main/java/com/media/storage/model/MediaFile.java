@@ -46,6 +46,15 @@ public class MediaFile {
     @Column
     private String description;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean favorite;
+
+    // Fixed random value assigned once at upload time so the "random" display
+    // order for non-favorites stays stable across paginated page fetches
+    // instead of reshuffling (and duplicating/skipping items) on every query.
+    @Column(name = "random_order")
+    private Double randomOrder;
+
     @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
     private Group group;
@@ -58,6 +67,12 @@ public class MediaFile {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (favorite == null) {
+            favorite = false;
+        }
+        if (randomOrder == null) {
+            randomOrder = Math.random();
+        }
     }
 
     @PreUpdate

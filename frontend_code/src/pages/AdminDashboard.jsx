@@ -108,6 +108,29 @@ const AdminDashboard = () => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
+  // Optimistically flip favorite locally (favorites float to the top,
+  // matching the backend's sort) then confirm with the server.
+  const handleToggleFavorite = async (file) => {
+    const nextFavorite = !file.favorite;
+    setFiles((prev) =>
+      prev
+        .map((f) => (f.id === file.id ? { ...f, favorite: nextFavorite } : f))
+        .sort((a, b) => (b.favorite === a.favorite ? 0 : b.favorite ? 1 : -1))
+    );
+    setPreviewFile((prev) => (prev && prev.id === file.id ? { ...prev, favorite: nextFavorite } : prev));
+    try {
+      await adminAPI.toggleFavorite(file.id);
+    } catch (error) {
+      setFiles((prev) =>
+        prev
+          .map((f) => (f.id === file.id ? { ...f, favorite: file.favorite } : f))
+          .sort((a, b) => (b.favorite === a.favorite ? 0 : b.favorite ? 1 : -1))
+      );
+      setPreviewFile((prev) => (prev && prev.id === file.id ? { ...prev, favorite: file.favorite } : prev));
+      alert('Error updating favorite: ' + error.message);
+    }
+  };
+
   const segments = [
     { key: 'ALL', label: 'All' },
     { key: 'IMAGE', label: 'Photos' },
@@ -260,6 +283,7 @@ const AdminDashboard = () => {
                     groupId={1}
                     isAdmin={true}
                     onPreview={setPreviewFile}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 ))}
               </div>
@@ -288,6 +312,7 @@ const AdminDashboard = () => {
           isAdmin={true}
           onClose={() => setPreviewFile(null)}
           onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
 

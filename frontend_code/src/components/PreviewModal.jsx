@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { mediaAPI, adminAPI, getStreamUrl } from '../services/api';
+import { StarIcon } from './Icons';
 
-const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
+const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onToggleFavorite }) => {
   const [loading, setLoading] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [videoRef, setVideoRef] = useState(null);
@@ -99,12 +100,24 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete }) => {
             {file.mediaType} • {formatFileSize(file.fileSize)} • {formatDate(file.createdAt)}
           </p>
         </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white text-2xl font-bold transition-colors shrink-0"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          {onToggleFavorite && (
+            <button
+              onClick={() => onToggleFavorite(file)}
+              style={{ color: file.favorite ? '#FFD60A' : '#9CA3AF' }}
+              className="hover:opacity-80 transition-opacity"
+              aria-label={file.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <StarIcon size={22} filled={!!file.favorite} />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-2xl font-bold transition-colors"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Content */}

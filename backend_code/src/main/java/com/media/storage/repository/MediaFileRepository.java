@@ -28,4 +28,6 @@ public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
     Optional<MediaFile> findByStoredFilename(String storedFilename);
 
     List<MediaFile> findByGroup(Group group);
+
+    List<MediaFile> findByRandomOrderIsNull();
 }

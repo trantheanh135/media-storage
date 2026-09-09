@@ -79,18 +79,24 @@ public class MediaFileService {
         return convertToDTO(mediaFile);
     }
 
+    // Favorites first, then everything else in a fixed-but-random order
+    // (see randomOrder on MediaFile) so pagination stays consistent.
+    private static final Sort DISPLAY_ORDER = Sort.by(
+            Sort.Order.desc("favorite"),
+            Sort.Order.asc("randomOrder"));
+
     public Page<MediaFileDTO> getGroupFiles(Group group, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByGroup(group, pageable).map(this::convertToDTO);
     }
 
     public Page<MediaFileDTO> getGroupFilesByType(Group group, MediaType mediaType, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByGroupAndMediaType(group, mediaType, pageable).map(this::convertToDTO);
     }
 
     public Page<MediaFileDTO> searchGroupFiles(Group group, String filename, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByGroupAndOriginalFilenameContainingIgnoreCase(group, filename, pageable)
                 .map(this::convertToDTO);
     }
@@ -99,6 +105,14 @@ public class MediaFileService {
         return mediaFileRepository.findByIdAndGroup(id, group)
                 .map(this::convertToDTO)
                 .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
+    }
+
+    public MediaFileDTO toggleFavorite(Long id, Group group) {
+        MediaFile mediaFile = mediaFileRepository.findByIdAndGroup(id, group)
+                .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
+        mediaFile.setFavorite(!Boolean.TRUE.equals(mediaFile.getFavorite()));
+        mediaFile = mediaFileRepository.save(mediaFile);
+        return convertToDTO(mediaFile);
     }
 
     public Resource downloadFile(Long id, Group group) throws IOException {
@@ -163,6 +177,7 @@ public class MediaFileService {
                 .createdAt(mediaFile.getCreatedAt())
                 .updatedAt(mediaFile.getUpdatedAt())
                 .description(mediaFile.getDescription())
+                .favorite(Boolean.TRUE.equals(mediaFile.getFavorite()))
                 .build();
     }
 }

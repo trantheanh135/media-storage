@@ -78,6 +78,22 @@ export const TrashIcon = ({ size = 18, style }) => (
   </svg>
 );
 
+export const StarIcon = ({ size = 18, style, filled = false }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
+    strokeWidth={1.8}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={style}
+  >
+    <polygon points="12 2.5 15.1 8.9 22.1 9.9 17 14.8 18.2 21.8 12 18.5 5.8 21.8 7 14.8 1.9 9.9 8.9 8.9 12 2.5" />
+  </svg>
+);
+
 export const CloudIcon = ({ size = 40, style }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...base} style={style}>
     <path d="M17.5 19H9a5 5 0 1 1 1.2-9.85A6 6 0 0 1 21 11.5 3.5 3.5 0 0 1 17.5 19z" />

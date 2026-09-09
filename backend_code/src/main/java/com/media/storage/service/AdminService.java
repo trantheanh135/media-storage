@@ -29,12 +29,18 @@ public class AdminService {
 
     // ✅ Only super-admin can use these methods
 
+    // Favorites first, then everything else in a fixed-but-random order
+    // (see randomOrder on MediaFile) so pagination stays consistent.
+    private static final Sort DISPLAY_ORDER = Sort.by(
+            Sort.Order.desc("favorite"),
+            Sort.Order.asc("randomOrder"));
+
     public Page<MediaFileDTO> getAllFilesAcrossGroups(int page, int size) {
         if (!authenticatedUserService.isSuperAdmin()) {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findAll(pageable)
                 .map(this::convertToDTO);
     }
@@ -44,7 +50,7 @@ public class AdminService {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByMediaType(mediaType, pageable)
                 .map(this::convertToDTO);
     }
@@ -54,9 +60,21 @@ public class AdminService {
             throw new RuntimeException("Only super-admin can search all files");
         }
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByOriginalFilenameContainingIgnoreCase(filename, pageable)
                 .map(this::convertToDTO);
+    }
+
+    public MediaFileDTO toggleFavoriteAsAdmin(Long fileId) {
+        if (!authenticatedUserService.isSuperAdmin()) {
+            throw new RuntimeException("Only super-admin can modify any file");
+        }
+
+        var mediaFile = mediaFileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+        mediaFile.setFavorite(!Boolean.TRUE.equals(mediaFile.getFavorite()));
+        mediaFile = mediaFileRepository.save(mediaFile);
+        return convertToDTO(mediaFile);
     }
 
     public Resource downloadFileAsAdmin(Long fileId) throws IOException {
@@ -131,6 +149,7 @@ public class AdminService {
                 .createdAt(mediaFile.getCreatedAt())
                 .updatedAt(mediaFile.getUpdatedAt())
                 .description(mediaFile.getDescription())
+                .favorite(Boolean.TRUE.equals(mediaFile.getFavorite()))
                 .build();
     }
 }
