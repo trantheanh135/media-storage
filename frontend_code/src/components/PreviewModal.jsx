@@ -6,9 +6,14 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
   const [loading, setLoading] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [videoRef, setVideoRef] = useState(null);
-  const currentIndex = files.findIndex((f) => f.id === file.id);
-  const isImage = file.mediaType === 'IMAGE';
-  const isVideo = file.mediaType === 'VIDEO';
+  // Track the open item by id (not the `file` prop, which never changes) so
+  // </->/-> actually swap what's displayed instead of just closing the modal.
+  const [activeFileId, setActiveFileId] = useState(file.id);
+
+  const currentIndex = files.findIndex((f) => f.id === activeFileId);
+  const activeFile = currentIndex >= 0 ? files[currentIndex] : file;
+  const isImage = activeFile.mediaType === 'IMAGE';
+  const isVideo = activeFile.mediaType === 'VIDEO';
 
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
@@ -21,19 +26,13 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
-      onClose();
-      setTimeout(() => {
-        // Parent component should handle this
-      }, 200);
+      setActiveFileId(files[currentIndex - 1].id);
     }
   };
 
   const handleNext = () => {
     if (currentIndex < files.length - 1) {
-      onClose();
-      setTimeout(() => {
-        // Parent component should handle this
-      }, 200);
+      setActiveFileId(files[currentIndex + 1].id);
     }
   };
 
@@ -41,13 +40,13 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
     setLoading(true);
     try {
       const response = isAdmin
-        ? await adminAPI.downloadFile(file.id)
-        : await mediaAPI.downloadFile(groupId, file.id);
+        ? await adminAPI.downloadFile(activeFile.id)
+        : await mediaAPI.downloadFile(groupId, activeFile.id);
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', file.originalFilename);
+      link.setAttribute('download', activeFile.originalFilename);
       document.body.appendChild(link);
       link.click();
       link.parentElement.removeChild(link);
@@ -63,12 +62,18 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
       setLoading(true);
       try {
         if (isAdmin) {
-          await adminAPI.deleteFile(file.id);
+          await adminAPI.deleteFile(activeFile.id);
         } else {
-          await mediaAPI.deleteFile(groupId, file.id);
+          await mediaAPI.deleteFile(groupId, activeFile.id);
         }
-        onDelete(file.id);
-        onClose();
+        onDelete(activeFile.id);
+        if (currentIndex < files.length - 1) {
+          setActiveFileId(files[currentIndex + 1].id);
+        } else if (currentIndex > 0) {
+          setActiveFileId(files[currentIndex - 1].id);
+        } else {
+          onClose();
+        }
       } catch (error) {
         alert('Error deleting file: ' + error.message);
       } finally {
@@ -95,20 +100,20 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
       {/* Header */}
       <div className="bg-gray-900 border-b border-gray-700 px-4 sm:px-6 py-4 flex justify-between items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold text-white truncate">{file.originalFilename}</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-white truncate">{activeFile.originalFilename}</h2>
           <p className="text-gray-400 text-xs sm:text-sm mt-1 truncate">
-            {file.mediaType} • {formatFileSize(file.fileSize)} • {formatDate(file.createdAt)}
+            {activeFile.mediaType} • {formatFileSize(activeFile.fileSize)} • {formatDate(activeFile.createdAt)}
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {onToggleFavorite && (
             <button
-              onClick={() => onToggleFavorite(file)}
-              style={{ color: file.favorite ? '#FFD60A' : '#9CA3AF' }}
+              onClick={() => onToggleFavorite(activeFile)}
+              style={{ color: activeFile.favorite ? '#FFD60A' : '#9CA3AF' }}
               className="hover:opacity-80 transition-opacity"
-              aria-label={file.favorite ? 'Remove from favorites' : 'Add to favorites'}
+              aria-label={activeFile.favorite ? 'Remove from favorites' : 'Add to favorites'}
             >
-              <StarIcon size={22} filled={!!file.favorite} />
+              <StarIcon size={22} filled={!!activeFile.favorite} />
             </button>
           )}
           <button
@@ -124,8 +129,9 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
       <div className="flex-1 flex items-center justify-center overflow-auto p-4">
         {isImage && (
           <img
-            src={getStreamUrl(file.id, groupId, isAdmin)}
-            alt={file.originalFilename}
+            key={activeFile.id}
+            src={getStreamUrl(activeFile.id, groupId, isAdmin)}
+            alt={activeFile.originalFilename}
             className="max-w-full max-h-full object-contain"
             onError={(e) => {
               e.target.src = '';
@@ -135,8 +141,9 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
 
         {isVideo && (
           <video
+            key={activeFile.id}
             ref={setVideoRef}
-            src={getStreamUrl(file.id, groupId, isAdmin)}
+            src={getStreamUrl(activeFile.id, groupId, isAdmin)}
             controls
             autoPlay
             className="max-w-full max-h-full object-contain bg-black"
@@ -172,10 +179,10 @@ const PreviewModal = ({ file, files, groupId, isAdmin, onClose, onDelete, onTogg
       )}
 
       {/* Description */}
-      {file.description && (
+      {activeFile.description && (
         <div className={`bg-gray-900 ${isVideo ? 'border-t' : 'border-t'} border-gray-700 px-6 py-3`}>
           <p className="text-gray-300 text-sm">
-            <span className="font-semibold">Description:</span> {file.description}
+            <span className="font-semibold">Description:</span> {activeFile.description}
           </p>
         </div>
       )}
