@@ -40,6 +40,9 @@ public class AdminService {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
+        if (page == 0) {
+            mediaFileRepository.reshuffleAllNonFavorites();
+        }
         Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findAll(pageable)
                 .map(this::convertToDTO);
@@ -50,6 +53,9 @@ public class AdminService {
             throw new RuntimeException("Only super-admin can access all files");
         }
 
+        if (page == 0) {
+            mediaFileRepository.reshuffleAllNonFavorites();
+        }
         Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByMediaType(mediaType, pageable)
                 .map(this::convertToDTO);

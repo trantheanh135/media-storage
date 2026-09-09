@@ -86,11 +86,17 @@ public class MediaFileService {
             Sort.Order.asc("randomOrder"));
 
     public Page<MediaFileDTO> getGroupFiles(Group group, int page, int size) {
+        if (page == 0) {
+            mediaFileRepository.reshuffleNonFavorites(group.getId());
+        }
         Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByGroup(group, pageable).map(this::convertToDTO);
     }
 
     public Page<MediaFileDTO> getGroupFilesByType(Group group, MediaType mediaType, int page, int size) {
+        if (page == 0) {
+            mediaFileRepository.reshuffleNonFavorites(group.getId());
+        }
         Pageable pageable = PageRequest.of(page, size, DISPLAY_ORDER);
         return mediaFileRepository.findByGroupAndMediaType(group, mediaType, pageable).map(this::convertToDTO);
     }
