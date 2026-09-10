@@ -137,16 +137,22 @@ public class GroupService {
         log.info("Group deleted: {}", group.getName());
     }
 
+    // Video streaming hits this on every single byte-range request (constant
+    // during playback/seeking), so it must stay a couple of indexed EXISTS
+    // checks - not a full Group load + members collection hydration, which
+    // was measurably adding to CPU load under the backend's tight CPU limit.
     public boolean userHasAccessToGroup(Long userId, Long groupId) {
-        Group group = groupRepository.findById(groupId)
-                .orElse(null);
-
-        if (group == null) {
+        if (userId == null || groupId == null) {
             return false;
         }
 
-        return group.getOwner().getId().equals(userId) ||
-               group.getMembers().stream().anyMatch(m -> m.getId().equals(userId));
+        if (groupRepository.existsByIdAndOwnerId(groupId, userId)) {
+            return true;
+        }
+
+        User user = new User();
+        user.setId(userId);
+        return groupRepository.existsByIdAndMembersContaining(groupId, user);
     }
 
     private GroupDTO convertToDTO(Group group) {
