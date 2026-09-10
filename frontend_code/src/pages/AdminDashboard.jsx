@@ -5,12 +5,14 @@ import PreviewModal from '../components/PreviewModal';
 import BottomTabBar from '../components/BottomTabBar';
 import { SearchIcon, CloseIcon, ShieldIcon, CloudIcon } from '../components/Icons';
 
+const PAGE_SIZE = 30;
+
 const AdminDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
   const [filterType, setFilterType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
@@ -18,7 +20,6 @@ const AdminDashboard = () => {
   const [previewFile, setPreviewFile] = useState(null);
 
   const loadingRef = useRef(false);
-  const sentinelRef = useRef(null);
 
   useEffect(() => {
     loadDashboard();
@@ -28,6 +29,9 @@ const AdminDashboard = () => {
   // component state) so callers never race against React's async state
   // updates - e.g. calling this right after setSearchActive(true) would
   // otherwise still see the old searchActive value.
+  //
+  // Each page replaces `files` outright (no accumulation) - keeps memory/DOM
+  // bounded regardless of how many files are in the system.
   const loadAllFiles = async (pageToLoad, isSearch, query, type) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
@@ -35,16 +39,17 @@ const AdminDashboard = () => {
     try {
       let response;
       if (isSearch && query) {
-        response = await adminAPI.searchAllFiles(query, pageToLoad, 12);
+        response = await adminAPI.searchAllFiles(query, pageToLoad, PAGE_SIZE);
       } else if (type !== 'ALL') {
-        response = await adminAPI.getFilesByType(type, pageToLoad, 12);
+        response = await adminAPI.getFilesByType(type, pageToLoad, PAGE_SIZE);
       } else {
-        response = await adminAPI.getAllFiles(pageToLoad, 12);
+        response = await adminAPI.getAllFiles(pageToLoad, PAGE_SIZE);
       }
 
-      setFiles((prev) => (pageToLoad === 0 ? response.data.content : [...prev, ...response.data.content]));
-      setHasMore(!response.data.last);
+      setFiles(response.data.content);
+      setTotalPages(response.data.totalPages);
       setPage(pageToLoad);
+      window.scrollTo(0, 0);
     } catch (error) {
       console.error('Error loading files:', error);
     } finally {
@@ -60,27 +65,10 @@ const AdminDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, filterType]);
 
-  // Infinite scroll: load the next page once the sentinel below the grid
-  // becomes visible.
-  useEffect(() => {
-    if (view !== 'files' || !hasMore) return undefined;
-
-    const node = sentinelRef.current;
-    if (!node) return undefined;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
-          loadAllFiles(page + 1, searchActive, searchQuery, filterType);
-        }
-      },
-      { rootMargin: '600px' }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, page, hasMore, files.length]);
+  const goToPage = (nextPage) => {
+    if (nextPage < 0 || nextPage >= totalPages || loadingRef.current) return;
+    loadAllFiles(nextPage, searchActive, searchQuery, filterType);
+  };
 
   const loadDashboard = async () => {
     try {
@@ -255,7 +243,7 @@ const AdminDashboard = () => {
           </div>
 
           {/* Files Grid */}
-          {loading && page === 0 ? (
+          {loading ? (
             <div className="text-center py-16">
               <div className="inline-flex items-center gap-2">
                 <div
@@ -288,14 +276,27 @@ const AdminDashboard = () => {
                 ))}
               </div>
 
-              <div ref={sentinelRef} className="h-1" />
-
-              {loading && page > 0 && (
-                <div className="text-center py-6">
-                  <div
-                    className="inline-block w-5 h-5 border-2 rounded-full animate-spin"
-                    style={{ borderColor: '#FF3B30', borderTopColor: 'transparent' }}
-                  ></div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 py-5">
+                  <button
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page === 0}
+                    style={{ background: '#F2F2F7', color: '#FF3B30' }}
+                    className="px-4 py-2 rounded-full text-[15px] font-medium disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span style={{ color: '#8E8E93' }} className="text-[13px] font-medium">
+                    Page {page + 1} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page >= totalPages - 1}
+                    style={{ background: '#F2F2F7', color: '#FF3B30' }}
+                    className="px-4 py-2 rounded-full text-[15px] font-medium disabled:opacity-40"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </>

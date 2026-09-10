@@ -6,6 +6,8 @@ import BottomTabBar from '../components/BottomTabBar';
 import { SearchIcon, CloseIcon, PlusIcon, ChevronDownIcon, CloudIcon } from '../components/Icons';
 import { mediaAPI, groupAPI, adminAPI } from '../services/api';
 
+const PAGE_SIZE = 30;
+
 const DashboardWithGroups = () => {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [groups, setGroups] = useState([]);
@@ -13,7 +15,7 @@ const DashboardWithGroups = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
   const [filterType, setFilterType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
@@ -25,7 +27,6 @@ const DashboardWithGroups = () => {
   const [previewFile, setPreviewFile] = useState(null);
 
   const loadingRef = useRef(false);
-  const sentinelRef = useRef(null);
 
   useEffect(() => {
     loadGroups();
@@ -45,6 +46,11 @@ const DashboardWithGroups = () => {
   // component state) so callers never race against React's async state
   // updates - e.g. calling this right after setSearchActive(true) would
   // otherwise still see the old searchActive value.
+  //
+  // Each page replaces `files` outright (no accumulation) - large groups
+  // (this app has had 1000+ files in one group) would otherwise keep every
+  // previously-seen page mounted in the DOM/state forever under infinite
+  // scroll, which is what was making it laggy on phones.
   const loadFiles = async (pageToLoad, isSearch, query, type) => {
     if (!selectedGroup || loadingRef.current) return;
     loadingRef.current = true;
@@ -52,16 +58,17 @@ const DashboardWithGroups = () => {
     try {
       let response;
       if (isSearch && query) {
-        response = await mediaAPI.searchGroupFiles(selectedGroup, query, pageToLoad, 12);
+        response = await mediaAPI.searchGroupFiles(selectedGroup, query, pageToLoad, PAGE_SIZE);
       } else if (type !== 'ALL') {
-        response = await mediaAPI.getGroupFilesByType(selectedGroup, type, pageToLoad, 12);
+        response = await mediaAPI.getGroupFilesByType(selectedGroup, type, pageToLoad, PAGE_SIZE);
       } else {
-        response = await mediaAPI.getGroupFiles(selectedGroup, pageToLoad, 12);
+        response = await mediaAPI.getGroupFiles(selectedGroup, pageToLoad, PAGE_SIZE);
       }
 
-      setFiles((prev) => (pageToLoad === 0 ? response.data.content : [...prev, ...response.data.content]));
-      setHasMore(!response.data.last);
+      setFiles(response.data.content);
+      setTotalPages(response.data.totalPages);
       setPage(pageToLoad);
+      window.scrollTo(0, 0);
     } catch (error) {
       console.error('Error loading files:', error);
     } finally {
@@ -77,27 +84,10 @@ const DashboardWithGroups = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroup, filterType]);
 
-  // Infinite scroll: load the next page once the sentinel below the grid
-  // becomes visible.
-  useEffect(() => {
-    if (!hasMore) return undefined;
-
-    const node = sentinelRef.current;
-    if (!node) return undefined;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
-          loadFiles(page + 1, searchActive, searchQuery, filterType);
-        }
-      },
-      { rootMargin: '600px' }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, hasMore, files.length]);
+  const goToPage = (nextPage) => {
+    if (nextPage < 0 || nextPage >= totalPages || loadingRef.current) return;
+    loadFiles(nextPage, searchActive, searchQuery, filterType);
+  };
 
   const loadGroups = async () => {
     try {
@@ -125,9 +115,8 @@ const DashboardWithGroups = () => {
     }
   };
 
-  const handleUploadSuccess = (newFile) => {
-    setPage(0);
-    setFiles((prev) => [newFile, ...prev]);
+  const handleUploadSuccess = () => {
+    loadFiles(0, searchActive, searchQuery, filterType);
   };
 
   const handleDelete = (fileId) => {
@@ -316,7 +305,7 @@ const DashboardWithGroups = () => {
           </div>
 
           {/* Grid */}
-          {loading && page === 0 ? (
+          {loading ? (
             <div className="text-center py-16">
               <div className="inline-flex items-center gap-2">
                 <div
@@ -349,14 +338,27 @@ const DashboardWithGroups = () => {
                 ))}
               </div>
 
-              <div ref={sentinelRef} className="h-1" />
-
-              {loading && page > 0 && (
-                <div className="text-center py-6">
-                  <div
-                    className="inline-block w-5 h-5 border-2 rounded-full animate-spin"
-                    style={{ borderColor: '#007AFF', borderTopColor: 'transparent' }}
-                  ></div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 py-5">
+                  <button
+                    onClick={() => goToPage(page - 1)}
+                    disabled={page === 0}
+                    style={{ background: '#F2F2F7', color: '#007AFF' }}
+                    className="px-4 py-2 rounded-full text-[15px] font-medium disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span style={{ color: '#8E8E93' }} className="text-[13px] font-medium">
+                    Page {page + 1} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => goToPage(page + 1)}
+                    disabled={page >= totalPages - 1}
+                    style={{ background: '#F2F2F7', color: '#007AFF' }}
+                    className="px-4 py-2 rounded-full text-[15px] font-medium disabled:opacity-40"
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </>
