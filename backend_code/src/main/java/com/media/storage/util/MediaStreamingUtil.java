@@ -14,6 +14,14 @@ import java.util.List;
 
 public class MediaStreamingUtil {
 
+    // A media file's bytes never change after upload (no edit-in-place, IDs
+    // are never reused), so it's safe - and important for perceived
+    // performance - to let the browser cache it indefinitely. Without this,
+    // the grid thumbnail and the preview modal (same URL, moments apart)
+    // each re-download the full file from scratch, and so does every repeat
+    // visit to the same page.
+    private static final String CACHE_CONTROL_VALUE = "private, max-age=31536000, immutable";
+
     public static ResponseEntity<ResourceRegion> stream(String filePath, String contentType, List<HttpRange> ranges) throws IOException {
         UrlResource resource = new UrlResource(Paths.get(filePath).toUri());
         long contentLength = resource.contentLength();
@@ -27,6 +35,7 @@ public class MediaStreamingUtil {
             return ResponseEntity.status(HttpStatus.OK)
                     .contentType(mediaType)
                     .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                    .header(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE)
                     .body(region);
         }
 
@@ -39,6 +48,7 @@ public class MediaStreamingUtil {
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
                 .contentType(mediaType)
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE)
                 .body(region);
     }
 }
