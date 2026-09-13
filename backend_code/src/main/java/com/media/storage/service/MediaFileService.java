@@ -298,9 +298,9 @@ public class MediaFileService {
     }
 
     private void validateFileSize(long fileSize) {
-        long maxSize = 500 * 1024 * 1024;
+        long maxSize = 2L * 1024 * 1024 * 1024;
         if (fileSize > maxSize) {
-            throw new RuntimeException("File size exceeds maximum limit of 500MB");
+            throw new RuntimeException("File size exceeds maximum limit of 2GB");
         }
     }
 
