@@ -24,7 +24,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +41,12 @@ public class MediaFileService {
 
     @Value("${app.upload.dir}")
     private String uploadDir;
+
+    private final ExecutorService backfillExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean backfillRunning = new AtomicBoolean(false);
+    private final AtomicInteger backfillTotal = new AtomicInteger(0);
+    private final AtomicInteger backfillProcessed = new AtomicInteger(0);
+    private final AtomicInteger backfillFailed = new AtomicInteger(0);
 
     public MediaFileDTO uploadFile(MultipartFile file, String description, Group group, User uploadedBy) throws IOException {
         String contentType = file.getContentType();
@@ -62,6 +74,8 @@ public class MediaFileService {
 
         file.transferTo(new File(filePath));
 
+        String thumbnailPath = generateThumbnail(filePath, storedFilename, mediaType);
+
         MediaFile mediaFile = MediaFile.builder()
                 .originalFilename(file.getOriginalFilename())
                 .storedFilename(storedFilename)
@@ -69,6 +83,7 @@ public class MediaFileService {
                 .mediaType(mediaType)
                 .fileSize(file.getSize())
                 .filePath(filePath)
+                .thumbnailPath(thumbnailPath)
                 .description(description)
                 .group(group)
                 .uploadedBy(uploadedBy)
@@ -133,9 +148,132 @@ public class MediaFileService {
 
         Path filePath = Paths.get(mediaFile.getFilePath());
         Files.deleteIfExists(filePath);
+        if (mediaFile.getThumbnailPath() != null) {
+            Files.deleteIfExists(Paths.get(mediaFile.getThumbnailPath()));
+        }
 
         mediaFileRepository.deleteById(id);
         log.info("File deleted successfully: {}", mediaFile.getOriginalFilename());
+    }
+
+    public Resource getThumbnail(Long id, Group group) throws IOException {
+        MediaFile mediaFile = mediaFileRepository.findByIdAndGroup(id, group)
+                .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
+        return loadThumbnailResource(mediaFile);
+    }
+
+    public Resource getThumbnailAsAdmin(Long id) throws IOException {
+        MediaFile mediaFile = mediaFileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found with id: " + id));
+        return loadThumbnailResource(mediaFile);
+    }
+
+    private Resource loadThumbnailResource(MediaFile mediaFile) throws IOException {
+        if (mediaFile.getThumbnailPath() == null) {
+            throw new RuntimeException("No thumbnail available for file: " + mediaFile.getId());
+        }
+        return new UrlResource(Paths.get(mediaFile.getThumbnailPath()).toUri());
+    }
+
+    private String thumbnailDir() {
+        return uploadDir.endsWith("/") ? uploadDir + "thumbnails/" : uploadDir + "/thumbnails/";
+    }
+
+    // Generates a small JPEG thumbnail via ffmpeg: an extracted frame for
+    // videos, a resized copy for images (ffmpeg decodes JPEG/PNG/GIF/WebP
+    // alike, so this covers every accepted image type with one code path).
+    // Returns null (instead of throwing) on any failure so a broken or
+    // missing ffmpeg never blocks an upload - the file just has no thumbnail
+    // until a retry/backfill.
+    private String generateThumbnail(String sourceFilePath, String storedFilename, MediaType mediaType) {
+        File thumbDirFile = new File(thumbnailDir());
+        if (!thumbDirFile.exists() && !thumbDirFile.mkdirs() && !thumbDirFile.exists()) {
+            log.warn("Could not create thumbnail directory: {}", thumbDirFile);
+            return null;
+        }
+
+        String thumbFilename = storedFilename.substring(0, storedFilename.lastIndexOf('.')) + ".jpg";
+        String thumbPath = thumbnailDir() + thumbFilename;
+
+        List<String> command = new java.util.ArrayList<>(List.of("ffmpeg", "-y"));
+        if (mediaType == MediaType.VIDEO) {
+            command.addAll(List.of("-ss", "1"));
+        }
+        command.addAll(List.of(
+                "-i", sourceFilePath,
+                "-frames:v", "1",
+                "-vf", "scale=320:-1",
+                thumbPath));
+
+        try {
+            Process process = new ProcessBuilder(command)
+                    .redirectErrorStream(true)
+                    .start();
+
+            boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                log.warn("ffmpeg timed out generating thumbnail for {}", sourceFilePath);
+                return null;
+            }
+            if (process.exitValue() != 0 || !new File(thumbPath).exists()) {
+                log.warn("ffmpeg failed to generate thumbnail for {} (exit {})", sourceFilePath, process.exitValue());
+                return null;
+            }
+            return thumbPath;
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            log.warn("Error generating thumbnail for {}: {}", sourceFilePath, e.getMessage());
+            return null;
+        }
+    }
+
+    // Generates thumbnails for every existing row that doesn't have one yet
+    // (uploaded before this feature existed, or where generation failed).
+    // Runs on a background thread since it processes the whole library and
+    // can take a while.
+    public boolean startThumbnailBackfill() {
+        if (!backfillRunning.compareAndSet(false, true)) {
+            return false;
+        }
+        backfillExecutor.submit(this::runThumbnailBackfill);
+        return true;
+    }
+
+    private void runThumbnailBackfill() {
+        try {
+            List<MediaFile> pending = mediaFileRepository.findByThumbnailPathIsNull();
+            backfillTotal.set(pending.size());
+            backfillProcessed.set(0);
+            backfillFailed.set(0);
+            log.info("Thumbnail backfill started for {} media files", pending.size());
+
+            for (MediaFile mediaFile : pending) {
+                String thumbPath = generateThumbnail(
+                        mediaFile.getFilePath(), mediaFile.getStoredFilename(), mediaFile.getMediaType());
+                if (thumbPath != null) {
+                    mediaFile.setThumbnailPath(thumbPath);
+                    mediaFileRepository.save(mediaFile);
+                } else {
+                    backfillFailed.incrementAndGet();
+                }
+                backfillProcessed.incrementAndGet();
+            }
+            log.info("Thumbnail backfill finished: {}/{} succeeded",
+                    backfillTotal.get() - backfillFailed.get(), backfillTotal.get());
+        } finally {
+            backfillRunning.set(false);
+        }
+    }
+
+    public java.util.Map<String, Object> getBackfillStatus() {
+        return java.util.Map.of(
+                "running", backfillRunning.get(),
+                "total", backfillTotal.get(),
+                "processed", backfillProcessed.get(),
+                "failed", backfillFailed.get());
     }
 
     private MediaType determineMediaType(String contentType) {
@@ -184,6 +322,7 @@ public class MediaFileService {
                 .updatedAt(mediaFile.getUpdatedAt())
                 .description(mediaFile.getDescription())
                 .favorite(Boolean.TRUE.equals(mediaFile.getFavorite()))
+                .hasThumbnail(mediaFile.getThumbnailPath() != null)
                 .build();
     }
 }

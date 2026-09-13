@@ -156,6 +156,28 @@ public class AdminService {
                 .updatedAt(mediaFile.getUpdatedAt())
                 .description(mediaFile.getDescription())
                 .favorite(Boolean.TRUE.equals(mediaFile.getFavorite()))
+                .hasThumbnail(mediaFile.getThumbnailPath() != null)
                 .build();
+    }
+
+    public Resource getThumbnailAsAdmin(Long fileId) throws IOException {
+        if (!authenticatedUserService.isSuperAdmin()) {
+            throw new RuntimeException("Only super-admin can access this file");
+        }
+        return mediaFileService.getThumbnailAsAdmin(fileId);
+    }
+
+    public boolean startThumbnailBackfill() {
+        if (!authenticatedUserService.isSuperAdmin()) {
+            throw new RuntimeException("Only super-admin can run the thumbnail backfill");
+        }
+        return mediaFileService.startThumbnailBackfill();
+    }
+
+    public java.util.Map<String, Object> getThumbnailBackfillStatus() {
+        if (!authenticatedUserService.isSuperAdmin()) {
+            throw new RuntimeException("Only super-admin can view backfill status");
+        }
+        return mediaFileService.getBackfillStatus();
     }
 }

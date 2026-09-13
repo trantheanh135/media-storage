@@ -23,4 +23,5 @@ public class MediaFileDTO {
     private LocalDateTime updatedAt;
     private String description;
     private Boolean favorite;
+    private Boolean hasThumbnail;
 }

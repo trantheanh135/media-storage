@@ -205,6 +205,32 @@ public class MediaFileController {
         }
     }
 
+    @GetMapping("/{groupId}/file/{id}/thumbnail")
+    public ResponseEntity<?> getThumbnail(@PathVariable Long groupId, @PathVariable Long id) {
+        try {
+            Long userId = getCurrentUserId();
+
+            if (!groupService.userHasAccessToGroup(userId, groupId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You don't have access to this group");
+            }
+
+            Group group = new Group();
+            group.setId(groupId);
+
+            Resource thumbnail = mediaFileService.getThumbnail(id, group);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "image/jpeg")
+                    .header(HttpHeaders.CACHE_CONTROL, "private, max-age=604800, immutable")
+                    .body(thumbnail);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to load thumbnail: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
     @GetMapping("/{groupId}/file/{id}/stream")
     public ResponseEntity<ResourceRegion> streamFile(
             @PathVariable Long groupId,

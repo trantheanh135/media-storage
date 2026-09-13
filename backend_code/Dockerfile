@@ -14,8 +14,11 @@ FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
+# ffmpeg is used to generate video thumbnails
+RUN apk add --no-cache ffmpeg
+
 # Create uploads directory
-RUN mkdir -p /home/uploads && chmod 755 /home/uploads
+RUN mkdir -p /home/uploads/thumbnails && chmod 755 /home/uploads /home/uploads/thumbnails
 
 # Copy jar from builder
 COPY --from=builder /app/target/media-storage-*.jar app.jar

@@ -37,6 +37,13 @@ public class MediaFile {
     @Column(nullable = false)
     private String filePath;
 
+    // Absolute path to a generated JPEG thumbnail on disk (a resized copy for
+    // images, an extracted frame for videos). Null until generated (on upload
+    // for new files, or via the backfill job for files that predate this
+    // feature or where generation failed).
+    @Column(name = "thumbnail_path")
+    private String thumbnailPath;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 

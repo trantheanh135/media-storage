@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getStreamUrl } from '../services/api';
+import { getStreamUrl, getThumbnailUrl } from '../services/api';
 import { PlayIcon, StarIcon } from './Icons';
 
 const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
@@ -14,8 +14,13 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
   // Only assign a src once the tile is actually near the viewport.
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
 
+  // Files uploaded before thumbnail generation existed (or where ffmpeg
+  // failed) have no generated thumbnail yet - fall back to loading the
+  // full original for those only.
+  const [thumbnailFailed, setThumbnailFailed] = useState(!file.hasThumbnail);
+
   useEffect(() => {
-    if (!isVideo || shouldLoadVideo) return undefined;
+    if (!isVideo || !thumbnailFailed || shouldLoadVideo) return undefined;
     const node = cardRef.current;
     if (!node) return undefined;
 
@@ -30,7 +35,7 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [isVideo, shouldLoadVideo]);
+  }, [isVideo, thumbnailFailed, shouldLoadVideo]);
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
@@ -46,15 +51,25 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
     >
       {isImage && (
         <img
-          src={getStreamUrl(file.id, groupId, isAdmin)}
+          src={thumbnailFailed ? getStreamUrl(file.id, groupId, isAdmin) : getThumbnailUrl(file.id, groupId, isAdmin)}
           alt={file.originalFilename}
           loading="lazy"
           className="w-full h-full object-cover"
+          onError={() => setThumbnailFailed(true)}
         />
       )}
       {isVideo && (
         <>
-          {shouldLoadVideo && (
+          {!thumbnailFailed && (
+            <img
+              src={getThumbnailUrl(file.id, groupId, isAdmin)}
+              alt={file.originalFilename}
+              loading="lazy"
+              className="w-full h-full object-cover"
+              onError={() => setThumbnailFailed(true)}
+            />
+          )}
+          {thumbnailFailed && shouldLoadVideo && (
             <video
               src={getStreamUrl(file.id, groupId, isAdmin)}
               preload="metadata"

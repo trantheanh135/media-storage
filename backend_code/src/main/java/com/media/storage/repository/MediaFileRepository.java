@@ -35,6 +35,8 @@ public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
 
     List<MediaFile> findByRandomOrderIsNull();
 
+    List<MediaFile> findByThumbnailPathIsNull();
+
     // Re-rolls the random display order for non-favorites so a fresh page load
     // (page 0) looks freshly shuffled, while pagination within that same
     // browsing session (page > 0, no reshuffle in between) stays consistent.

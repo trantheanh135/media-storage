@@ -120,6 +120,49 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/files/{id}/thumbnail")
+    public ResponseEntity<?> getThumbnail(@PathVariable Long id) {
+        try {
+            Resource thumbnail = adminService.getThumbnailAsAdmin(id);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "image/jpeg")
+                    .header(HttpHeaders.CACHE_CONTROL, "private, max-age=604800, immutable")
+                    .body(thumbnail);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to load thumbnail"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ==================== Thumbnail Backfill ====================
+
+    @PostMapping("/thumbnails/backfill")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> backfillThumbnails() {
+        try {
+            boolean started = adminService.startThumbnailBackfill();
+            return ResponseEntity.ok(Map.of(
+                    "started", started,
+                    "message", started ? "Backfill started" : "Backfill already running"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/thumbnails/backfill/status")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> getBackfillStatus() {
+        try {
+            return ResponseEntity.ok(adminService.getThumbnailBackfillStatus());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/files/{id}/stream")
     public ResponseEntity<ResourceRegion> streamFile(@PathVariable Long id, HttpServletRequest request) {
         try {

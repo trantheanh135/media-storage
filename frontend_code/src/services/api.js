@@ -17,6 +17,14 @@ export const getStreamUrl = (fileId, groupId, isAdmin) => {
   return `${base}?token=${encodeURIComponent(token || '')}`;
 };
 
+export const getThumbnailUrl = (fileId, groupId, isAdmin) => {
+  const token = localStorage.getItem('token');
+  const base = isAdmin
+    ? `${API_BASE_URL}/admin/files/${fileId}/thumbnail`
+    : `${API_BASE_URL}/media/${groupId}/file/${fileId}/thumbnail`;
+  return `${base}?token=${encodeURIComponent(token || '')}`;
+};
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
