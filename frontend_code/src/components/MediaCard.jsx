@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { getStreamUrl, getThumbnailUrl } from '../services/api';
 import { PlayIcon, StarIcon } from './Icons';
 
@@ -6,36 +6,14 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
   const isImage = file.mediaType === 'IMAGE';
   const isVideo = file.mediaType === 'VIDEO';
 
-  const cardRef = useRef(null);
-  // <video> has no loading="lazy" equivalent, so with infinite scroll every
-  // video tile ever added to the DOM would keep an open stream request to
-  // the backend at once - with hundreds of videos that exhausts the
-  // server's connection/thread pool and playback starts failing everywhere.
-  // Only assign a src once the tile is actually near the viewport.
-  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
-
-  // Files uploaded before thumbnail generation existed (or where ffmpeg
-  // failed) have no generated thumbnail yet - fall back to loading the
-  // full original for those only.
+  // Videos always have a generated thumbnail now (backfilled for every
+  // pre-existing file too) except ones with no actual decodable video data
+  // (e.g. corrupted/truncated uploads) - ffmpeg can never produce a frame
+  // for those, so there's nothing to fall back to. Rather than fetching the
+  // full video stream just to grab a preview frame client-side (expensive,
+  // and exhausts the backend's connection pool with hundreds of tiles),
+  // those just show the plain placeholder tile with no image.
   const [thumbnailFailed, setThumbnailFailed] = useState(!file.hasThumbnail);
-
-  useEffect(() => {
-    if (!isVideo || !thumbnailFailed || shouldLoadVideo) return undefined;
-    const node = cardRef.current;
-    if (!node) return undefined;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setShouldLoadVideo(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [isVideo, thumbnailFailed, shouldLoadVideo]);
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
@@ -44,7 +22,6 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
 
   return (
     <div
-      ref={cardRef}
       onClick={() => onPreview(file)}
       style={{ aspectRatio: '1', background: '#E5E5EA' }}
       className="relative cursor-pointer"
@@ -67,25 +44,6 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
               loading="lazy"
               className="w-full h-full object-cover"
               onError={() => setThumbnailFailed(true)}
-            />
-          )}
-          {thumbnailFailed && shouldLoadVideo && (
-            <video
-              src={getStreamUrl(file.id, groupId, isAdmin)}
-              preload="metadata"
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-              // preload="metadata" alone leaves a blank/black tile in most
-              // browsers - nudging currentTime forces the browser to decode
-              // and paint the frame at that point as a thumbnail.
-              onLoadedMetadata={(e) => {
-                try {
-                  e.currentTarget.currentTime = Math.min(0.1, e.currentTarget.duration || 0);
-                } catch {
-                  // ignore - some browsers throw if metadata isn't fully ready
-                }
-              }}
             />
           )}
           <div
