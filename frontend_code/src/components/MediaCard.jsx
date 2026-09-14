@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { getStreamUrl, getThumbnailUrl } from '../services/api';
+import { getThumbnailUrl } from '../services/api';
 import { PlayIcon, StarIcon } from './Icons';
 
 const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
   const isImage = file.mediaType === 'IMAGE';
   const isVideo = file.mediaType === 'VIDEO';
 
-  // Videos always have a generated thumbnail now (backfilled for every
-  // pre-existing file too) except ones with no actual decodable video data
-  // (e.g. corrupted/truncated uploads) - ffmpeg can never produce a frame
-  // for those, so there's nothing to fall back to. Rather than fetching the
-  // full video stream just to grab a preview frame client-side (expensive,
-  // and exhausts the backend's connection pool with hundreds of tiles),
-  // those just show the plain placeholder tile with no image.
+  // Every file gets a generated thumbnail now (backfilled for pre-existing
+  // ones too) except files with no actual decodable media data (e.g.
+  // corrupted/truncated uploads) - ffmpeg can never produce a frame for
+  // those, so there's nothing to fall back to. Rather than fetching the
+  // full original just to render a gallery tile (expensive for large videos
+  // and images alike, and exhausts the backend's connection pool with
+  // hundreds of tiles), those just show the plain placeholder tile.
   const [thumbnailFailed, setThumbnailFailed] = useState(!file.hasThumbnail);
 
   const handleFavoriteClick = (e) => {
@@ -26,9 +26,9 @@ const MediaCard = ({ file, groupId, isAdmin, onPreview, onToggleFavorite }) => {
       style={{ aspectRatio: '1', background: '#E5E5EA' }}
       className="relative cursor-pointer"
     >
-      {isImage && (
+      {isImage && !thumbnailFailed && (
         <img
-          src={thumbnailFailed ? getStreamUrl(file.id, groupId, isAdmin) : getThumbnailUrl(file.id, groupId, isAdmin)}
+          src={getThumbnailUrl(file.id, groupId, isAdmin)}
           alt={file.originalFilename}
           loading="lazy"
           className="w-full h-full object-cover"
